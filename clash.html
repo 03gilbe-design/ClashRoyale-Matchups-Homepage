@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clash Royale Decks</title>
+  <style>
+    :root{
+      --bg:#0a0a0a; --panel:#101010; --panel-2:#121212; --border:#262626;
+      --muted:#8a8a8a; --text:#f7f7f7; --brand:#00ff88; --danger:#ff4d4d;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";background:radial-gradient(1200px 800px at 10% -10%,#001b12 0%,transparent 55%) no-repeat,radial-gradient(1000px 600px at 110% 10%,#00100a 0%,transparent 55%) no-repeat,var(--bg);background-attachment:fixed,fixed,fixed;color:var(--text);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+
+    .container{max-width:1200px;margin:0 auto;padding:28px 16px 160px}
+    header{position:static;background:transparent;z-index:5;padding-top:8px}
+    .topbar{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:8px;position:relative}
+    .hamburger{position:absolute;left:4px;top:-12px;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:transparent;border:none;border-radius:10px;cursor:pointer}
+    .hamburger .bars{position:relative;width:22px;height:14px}
+    .hamburger .bars span{position:absolute;left:0;right:0;height:2px;background:#eaeaea;border-radius:2px;transition:transform .2s ease,opacity .2s ease}
+    .hamburger .bars span:nth-child(1){top:0}
+    .hamburger .bars span:nth-child(2){top:6px}
+    .hamburger .bars span:nth-child(3){top:12px}
+    .drawer-open .hamburger .bars span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+    .drawer-open .hamburger .bars span:nth-child(2){opacity:0}
+    .drawer-open .hamburger .bars span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+    h1{font-weight:700;letter-spacing:.04em;margin:0;font-size:28px}
+    .subtitle{color:var(--muted);font-size:13px;letter-spacing:.02em;text-align:center;margin-top:6px}
+
+    .decks-grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+
+    /* MOD: Padding di base simmetrico */
+    .deck{
+        background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:var(--shadow);position:relative;transition:transform .15s ease,border-color .2s ease, opacity .15s ease, padding .15s ease, background .2s ease, backdrop-filter .2s ease;
+        overflow: hidden; /* FIX: Contieni sfocatura acrilico */
+    }
+    .deck:active{transform:scale(.995)}
+    .deck.dragging{
+        opacity: 1;
+        transform: scale(1.02);
+        outline: 2px solid #fff;
+        box-shadow: 0 12px 36px rgba(0,0,0,.5);
+        z-index: 10;
+    }
+    body.deck-is-dragging .deck:not(.dragging) {
+        opacity: 0.5;
+    }
+    .deck.edit{border-color:var(--brand);box-shadow:0 0 0 1px rgba(0,255,136,.25),0 12px 36px rgba(0,255,136,.08)}
+    
+    /* MOD: Padding ridotto (ora 0px) */
+    .deck.reduced-padding { padding-bottom: 0px; }
+    @media (max-width:760px){
+      /* MOD: Padding mobile simmetrico */
+      .deck { padding: 8px; }
+      .deck.reduced-padding { padding-bottom: 0px; }
+    }
+    
+    /* MOD: Effetto acrilico */
+    body.acrylic-enabled .deck {
+        background: linear-gradient(180deg, rgba(16,16,16,0.85), rgba(18,18,18,0.85));
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(38,38,38,0.5);
+        box-shadow: inset 0 0 15px 8px rgba(0,0,0,0.3); /* MOD: Aggiunto contorno nero sfumato */
+    }
+    body.acrylic-enabled .deck.edit {
+        border-color: var(--brand);
+        background: linear-gradient(180deg, rgba(16,22,20,0.85), rgba(18,24,22,0.85));
+        box-shadow: 0 0 0 1px rgba(0,255,136,.25),0 12px 36px rgba(0,255,136,.08); /* MOD: Assicura che lo shadow di edit sovrascriva */
+    }
+    
+    /* MOD: Effetto Glass */
+    body.glass-enabled .deck {
+        background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+        box-shadow: inset 0 0 15px 8px rgba(0,0,0,0.3); /* FIX: Contorno sfumato nero più scuro */
+    }
+    body.glass-enabled .deck.edit {
+        border-color: var(--brand);
+        background: linear-gradient(180deg, rgba(200,255,230,0.1), rgba(200,255,230,0.05));
+        box-shadow: 0 0 0 1px rgba(0,255,136,.25),0 12px 36px rgba(0,255,136,.08); /* MOD: Assicura che lo shadow di edit sovrascriva */
+    }
+    body.glass-enabled .deck .slot {
+        background: transparent;
+    }
+    body.glass-enabled .deck .slot.empty {
+        border-color: rgba(255,255,255,0.2);
+    }
+    body.glass-enabled .deck.edit .slot.empty:hover {
+        border-color: rgba(255,255,255,0.4);
+    }
+
+    /* FIX: Rimuovi sfondo nero slot (Acrilico) */
+    body.acrylic-enabled .deck .slot { /* MOD: Applicato a .slot, non .slot.empty */
+        background: transparent;
+    }
+    body.acrylic-enabled .deck .slot.empty {
+        /* background: transparent; */ /* Spostato su .slot */
+        border-color: rgba(255,255,255,0.1); /* Aggiungi un bordo per visibilità */
+    }
+    body.acrylic-enabled .deck.edit .slot.empty:hover {
+        border-color: rgba(255,255,255,0.3);
+    }
+
+
+    /* MOD: Stili per sfondo acrilico con carte */
+    .deck-bg {
+        position: absolute;
+        inset: 0;
+        border-radius: 14px; /* deve corrispondere al .deck */
+        overflow: hidden;
+        z-index: -1;
+        opacity: 0;
+        transition: opacity .3s ease;
+        /* transform: scale(1.05); */ /* Rimosso, overflow gestito da .deck */
+        filter: blur(10px); /* MOD: Ridotto da 15px */
+    }
+    /* FIX: Attiva sfondo-immagine anche per .glass-enabled */
+    body.acrylic-enabled .deck:not(.edit) .deck-bg,
+    body.glass-enabled .deck:not(.edit) .deck-bg {
+        opacity: 1;
+    }
+    .deck-bg-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        opacity: 0.6; /* MOD: Aumentato da 0.3 */
+        /* FIX: Centra la griglia sfocata */
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .deck-bg-img {
+        width: 100%;
+        height: 100%;
+        /* FIX: Ritaglia e centra l'immagine */
+        object-fit: none;
+        object-position: center center;
+        /* transform: scale(1.2); */ /* Rimosso, vedi sotto */
+        aspect-ratio: 5/6;
+    }
+    /* FIX: Immagini "moolto piu piccole" per vetro (1:1) */
+    body.glass-enabled .deck-bg-img {
+        transform: scale(1.0);
+    }
+    /* FIX: Immagini "moolto piu piccole" per acrilico (1:1) */
+    body.acrylic-enabled .deck-bg-img {
+        transform: scale(1.0); 
+    }
+
+
+    .deck-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px}
+    .deck.delmark .deck-head{border-bottom:1px dashed var(--danger)}
+    .deck.delmark { border-color: var(--danger); }
+    .deck-title{flex:1;font-weight:650;letter-spacing:.02em}
+    .deck-title[contenteditable="true"]{outline:none;border-radius:8px;padding:4px 6px;background:#0f0f0f;border:1px solid var(--border)}
+
+    .icon-btn{appearance:none;border:1px solid var(--border);background:#0f0f0f;color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:13px;line-height:1;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+    .icon-btn:hover{border-color:#3a3a3a;transform:translateY(-1px)}
+    .icon-btn.delete:hover{background:#1b0b0b;border-color:#3b1a1a;color:#ffb3b3}
+
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+    .slot{aspect-ratio:5/6;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#0e0e0e;position:relative;display:flex;align-items:center;justify-content:center;
+        /* Aggiungi transizioni */
+        transition: background .3s ease, border-color .3s ease;
+    }
+    .slot.filled{border-color:transparent}
+    .slot.evo{overflow:visible;z-index:2}
+    .slot img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .12s ease;
+        /* MOD: Impedisci selezione/drag immagine */
+        pointer-events: none;
+        -webkit-touch-callout: none;
+        user-select: none;
+    }
+    
+    /* MOD: Allineamento carte Evo (transform-origin: bottom) */
+    .slot.evo img { transform: scale(1.15); transform-origin: bottom; }
+    .slot.evo-ghost img { transform: scale(1.18); transform-origin: bottom; }
+    .slot.evo-inferno img { transform: scale(1.18); transform-origin: bottom; }
+
+    .slot.empty{color:#2c2c2c;font-size:36px;letter-spacing:.1em}
+    .slot .remove{position:absolute;top:6px;right:6px;border:none;background:rgba(0,0,0,.7);color:#fff;width:24px;height:24px;border-radius:999px;cursor:pointer;display:none}
+    .deck.edit .slot:hover{border-color:#3a3a3a}
+    .deck.edit .slot:hover .remove{display:block}
+    
+    .deck.half-height .slot[data-i='4'],
+    .deck.half-height .slot[data-i='5'],
+    .deck.half-height .slot[data-i='6'],
+    .deck.half-height .slot[data-i='7'] {
+      display: none;
+    }
+
+    .links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .yt-pill{position:relative;display:inline-flex;align-items:center;gap:8px;padding:8px 28px 8px 12px;border:1px solid var(--border);border-radius:10px;background:#0f0f0f;color:var(--text);text-decoration:none;font-size:12px;cursor:pointer}
+    .yt-pill:link,.yt-pill:visited,.yt-pill:active{color:var(--text)}
+    .yt-pill .close{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:#191919;color:#eee;width:20px;height:20px;border-radius:8px;line-height:18px;text-align:center;font-size:14px;cursor:pointer}
+
+    .add-link{display:flex;gap:8px;margin-top:10px}
+    .add-link input{flex:1;min-width:0;border:1px solid var(--border);background:#0f0f0f;color:var(--text);border-radius:10px;padding:10px 12px}
+
+    .fab{position:fixed;inset:auto 16px 16px auto;background:var(--brand);color:#003521;border:none;width:56px;height:56px;border-radius:16px;font-size:28px;font-weight:700;cursor:pointer;box-shadow:0 14px 40px rgba(0,255,136,.35);transition:transform .15s}
+    .fab:hover{transform:translateY(-1px)}
+
+    .drawer{position:fixed;inset:0;background:rgba(0,0,0,.0);display:none;z-index:30;transition:background .25s ease}
+    .drawer.show{display:block;background:rgba(0,0,0,.6)}
+    .drawer-panel{position:absolute;left:0;top:0;bottom:0;width:300px;background:linear-gradient(180deg,var(--panel),var(--panel-2));border-right:1px solid var(--border);box-shadow:var(--shadow);padding:14px;transform:translateX(-100%);transition:transform .25s ease}
+    .drawer.show .drawer-panel{transform:translateX(0)}
+    .drawer h3{margin:6px 0 12px;font-size:16px}
+    .collections{display:flex;flex-direction:column;gap:8px}
+    .col-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--border);background:#0f0f0f;color:#fff;border-radius:10px;padding:8px 10px;cursor:pointer}
+    .col-btn.active{background:#12261e;border-color:#1f6b4b}
+    .col-add{margin-top:10px}
+    
+    .drawer-options { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .drawer-options li { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--muted); }
+    .drawer-options .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+    .drawer-options .switch input { opacity: 0; width: 0; height: 0; }
+    .drawer-options .slider { position: absolute; cursor: pointer; inset: 0; background-color: #2a2a2a; border-radius: 20px; transition: .3s; }
+    .drawer-options .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .3s; }
+    .drawer-options input:checked + .slider { background-color: var(--brand); }
+    .drawer-options input:checked + .slider:before { transform: translateX(14px); }
+    
+    /* MOD: Rimosso mobile-only-option */
+    /* .drawer-options .mobile-only-option { display: none; }
+    @media (max-width: 760px) {
+      .drawer-options .mobile-only-option { display: flex; }
+    } */
+
+    /* MOD: Stili separatore */
+    .deck-separator {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+        touch-action: pan-y;
+        border-radius: 10px; /* MOD: Aggiunto per click */
+        transition: background .15s ease;
+    }
+    .deck-separator hr {
+        flex-grow: 1;
+        border: none;
+        border-top: 1px solid var(--border);
+        opacity: 0.6;
+    }
+    .deck-separator .separator-title {
+        font-weight: 600;
+        color: var(--muted);
+        letter-spacing: .03em;
+        font-size: 13px;
+        padding: 4px 6px;
+    }
+    .deck-separator .separator-title[contenteditable="true"] {
+        outline: none;
+        border-radius: 8px;
+        background: #0f0f0f;
+        border: 1px solid var(--border);
+        color: var(--text);
+    }
+    .deck-separator.dragging {
+        opacity: 0.5;
+        background: var(--panel-2);
+        border-radius: 10px;
+    }
+    .deck-separator .delete {
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 8px;
+        display: none; /* MOD: Nascosto di default */
+    }
+    .deck-separator.show-ctrl {
+        background: var(--panel-2);
+    }
+    .deck-separator.show-ctrl .delete {
+        display: inline-flex; /* MOD: Mostra su show-ctrl */
+    }
+
+
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;z-index:20}
+    .modal.show{display:block}
+    .modal-panel{max-width:980px;margin:40px auto;background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+    .modal-head{display:flex;align-items:center;gap:10px;border-bottom:1px dashed var(--border);padding-bottom:10px;margin-bottom:12px}
+    .modal-title{font-weight:700;letter-spacing:.04em}
+    .close{margin-left:auto;border:none;background:transparent;color:var(--text);font-size:28px;cursor:pointer}
+    .search{display:flex;gap:8px}
+    .search input{flex:1;border:1px solid var(--border);background:#0f0f0f;color:var(--text);border-radius:10px;padding:10px 12px}
+
+    .filterbar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+    .filterbar .icon-btn{padding:6px 10px}
+    .filterbar .icon-btn.active{background:#1a1a1a;border-color:#3a3a3a;color:#dcdcdc}
+    .filterbar .icon-btn .sort-arrow{font-size:10px;margin-left:4px;display:inline-block;}
+
+    .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:60vh;overflow:auto;margin-top:12px}
+    .card-opt{aspect-ratio:5/6;border:2px solid #1a1a1a;border-radius:10px;overflow:visible;cursor:pointer;transition:transform .1s,border-color .15s;background:#0e0e0e; position: relative;}
+    .card-opt:hover{border-color:#3a3a3a}
+    .card-opt img{width:100%;height:100%;object-fit:cover;display:block; transition: transform .1s;}
+    .card-opt:hover img { transform: translateY(-2px); }
+    
+    .card-opt.evo-card { z-index: 1; }
+    .card-opt.legendary-evo-card { z-index: 2; }
+    .card-opt.evo-card img { transform: scale(1.1); }
+    .card-opt.legendary-evo-card img { transform: scale(1.15); }
+    .card-opt.evo-card:hover img { transform: scale(1.12) translateY(-2px); }
+    .card-opt.legendary-evo-card:hover img { transform: scale(1.17) translateY(-2px); }
+
+    .yt-dd{position:fixed;display:none;flex-direction:column;gap:8px;background:#0f0f0f;border:1px solid var(--border);border-radius:14px;padding:12px;z-index:50;box-shadow:var(--shadow);max-width:92vw;overflow:auto}
+    .yt-dd.show{display:flex}
+    .yt-dd.mobile{left:50% !important; top:50% !important; transform:translate(-50%,-50%) !important; max-height:70vh; border:1px solid #2a2a2a; box-shadow:0 18px 60px rgba(0,0,0,.6), 0 0 0 2px rgba(255,255,255,.05) inset}
+    .yt-dd.mobile::before{content:"Anteprime"; font-size:12px; color:#bdbdbd; letter-spacing:.06em; margin-bottom:4px}
+    .yt-thumb{width:220px;height:124px;border-radius:10px;border:2px solid transparent;cursor:pointer;display:block}
+    .yt-wrap{position:relative;display:inline-block}
+    .time-badges{position:absolute;top:6px;left:6px;display:flex;gap:6px}
+    .time-badges button{border:1px solid var(--border);background:#0f0f0f;color:var(--text);font-size:12px;padding:4px 6px;border-radius:8px;cursor:pointer;opacity:.95}
+
+    @media (max-width:760px){
+      .container{padding:12px 8px 160px}
+      h1{font-size:20px}
+      .decks-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      /* .deck{padding:8px 8px 6px;border-radius:8px} */ /* Rimosso per far funzionare padding simmetrico */
+      .deck-head{gap:6px;margin-bottom:8px;padding-bottom:4px}
+      .deck-title{font-size:13px}
+      .icon-btn{padding:4px 8px;font-size:12px;border-radius:8px}
+      .deck.edit .editbtn,.deck.edit .delete{display:inline-flex !important}
+      .deck:not(.edit) .editbtn,.deck:not(.edit) .delete{display:none; pointer-events: none;}
+      .deck.show-ctrl .editbtn,.deck.show-ctrl .delete{display:inline-flex; pointer-events: auto;}
+      .deck:not(.show-ctrl):not(.edit) .deck-title{text-align:center}
+      .deck.show-ctrl .deck-title{text-align:left}
+      .cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+      .slot{border-radius:6px}
+      .slot.filled{border:none}
+      .slot.empty{font-size:28px}
+      .slot img{transform:scale(1.08)}
+      .card-grid{grid-template-columns:repeat(4,1fr);gap:8px}
+      .card-opt{border-radius:8px}
+      .yt-thumb{width:180px;height:102px}
+      @keyframes revealCtrls{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+      .deck.show-ctrl .editbtn,.deck.show-ctrl .delete{animation:revealCtrls .18s ease}
+      @keyframes pulseTap{0%{transform:scale(1)}50%{transform:scale(1.03)}100%{transform:scale(1)}}
+      .deck-title.tap-anim{animation:pulseTap .18s ease}
+      
+      /* MOD: Allineamento mobile */
+      .slot.evo{overflow:visible;z-index:2}
+      .slot.evo img{transform:scale(1.15); transform-origin: bottom;}
+      .slot.evo-ghost img{transform:scale(1.18); transform-origin: bottom;}
+      .slot.evo-inferno img{transform:scale(1.18); transform-origin: bottom;}
+      
+      .add-link input.link-url {
+        transition: padding-left .15s ease;
+      }
+      .add-link input.link-url:placeholder-shown {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238a8a8a' viewBox='0 0 16 16'%3E%3Cpath d='M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.83-4H9c-.086 0-.17.01-.25.031A2 2 0 0 1 7 10.5H4a2 2 0 1 1 0-4h1.535c.218-.376.495-.708.819-1z'/%3E%3Cpath d='M9 5.5a3 3 0 0 0-2.83 4h1.098A2 2 0 0 1 9 6.5h3a2 2 0 1 1 0 4h-1.535a4.02 4.02 0 0 1-.819 1H12a3 3 0 1 0 0-6H9z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: 10px center;
+        background-size: 14px 14px;
+        padding-left: 32px;
+      }
+      .add-link input.link-url:not(:placeholder-shown) {
+         background-image: none;
+         padding-left: 12px;
+      }
+      .add-link input.link-url::placeholder {
+        color: var(--muted);
+      }
+    }
+
+    .drag-proxy{position:fixed;left:0;top:0;transform:translate(-50%,-50%) scale(1.06);outline:2px solid #fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.55);z-index:9999;pointer-events:none;width:320px}
+    .deck.dragging-origin{opacity:.35}
+
+    .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#101010;border:1px solid var(--border);color:#f2f2f2;padding:10px 14px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:13px;z-index:2000;opacity:0;pointer-events:none;transition:opacity .2s ease}
+    .toast.show{opacity:1}
+    .fab-tip{position:fixed;right:86px;bottom:46px;background:#101010;border:1px solid var(--border);color:#f2f2f2;padding:10px 12px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:12px;z-index:2000;opacity:0;pointer-events:none;transition:opacity .2s ease}
+    .fab-tip.show{opacity:1}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="topbar">
+        <button class="hamburger" id="openDrawer" aria-label="Apri collezioni"><span class="bars"><span></span><span></span><span></span></span></button>
+        <h1>Clash Royale Decks</h1>
+      </div>
+      <div class="subtitle" id="subtitle">Crea la tua schermata di deck con pulsanti rapidi verso tutorial YouTube</div>
+    </header>
+
+    <section id="grid" class="decks-grid"></section>
+  </div>
+
+  <button id="addDeck" class="fab" title="Nuovo deck">+</button>
+
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-panel">
+      <h3>Collezioni</h3>
+      <div class="collections" id="collections"></div>
+      <button class="icon-btn col-add" id="addCollection">+ Nuova collezione</button>
+      
+      <hr style="border:none;border-top:1px solid var(--border);margin:12px 0"/>
+      <h3>Opzioni</h3>
+      <ul class="drawer-options" id="drawerOptions">
+        <li>
+          <span>Deck con 1 riga</span> <!-- MOD: Nome -->
+          <label class="switch">
+            <input type="checkbox" id="toggleHalfDecks">
+            <span class="slider"></span>
+          </label>
+        </li>
+        <!-- MOD: Rimosso mobile-only-option -->
+        <li>
+          <span>Stringi deck</span> <!-- MOD: Nome -->
+          <label class="switch">
+            <input type="checkbox" id="toggleDeckPadding">
+            <span class="slider"></span>
+          </label>
+        </li>
+        <!-- MOD: Opzione Acrilico -->
+        <li>
+          <span>Effetto Acrilico</span>
+          <label class="switch">
+            <input type="checkbox" id="toggleAcrylicEffect">
+            <span class="slider"></span>
+          </label>
+        </li>
+        <!-- MOD: Opzione Glass -->
+        <li>
+          <span>Effetto Vetro</span>
+          <label class="switch">
+            <input type="checkbox" id="toggleGlassEffect">
+            <span class="slider"></span>
+          </label>
+        </li>
+      </ul>
+      
+      <hr style="border:none;border-top:1px solid var(--border);margin:12px 0"/>
+      <!-- MOD: Aggiunto Esporta/Importa -->
+      <h3>Gestione</h3>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button class="icon-btn" id="exportData" style="width:100%;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 6px;"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
+          Esporta JSON
+        </button>
+        <button class="icon-btn" id="importData" style="width:100%;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 6px;"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+          Importa JSON
+        </button>
+        <button class="icon-btn" id="shareData" style="width:100%; grid-column: 1 / -1;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 6px;"><path d="M13.5 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.499 2.499 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5zm-8.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm11 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
+          Condividi (File HTML)
+        </button>
+      </div>
+      <input type="file" id="importFile" accept=".json,.txt" style="display:none;" />
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:12px 0"/>
+      <h3>Aiuto</h3>
+      <div id="helpBox" style="font-size:12px;color:var(--muted);line-height:1.5"></div>
+      
+    </div>
+  </aside>
+
+  <div id="cardModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <div id="pickTitle" class="modal-title">Seleziona carta</div>
+        <button class="close" id="modalClose" aria-label="Chiudi">×</button>
+      </div>
+      <div class="search"><input id="cardSearch" placeholder="Cerca carta (es. 'mk', 'egiant', 'bow')..." /></div>
+      <div class="filterbar">
+        <!-- MOD: Aggiunti data-filter per fixare bug -->
+        <button class="icon-btn fb-all active" data-filter="all">Tutte</button>
+        <button class="icon-btn fb-evo" data-filter="evo">Solo Evo</button>
+        <button class="icon-btn fb-non" data-filter="non">Solo non‑Evo</button>
+        <button class="icon-btn fb-elixir" data-sort="elixir">Elisir<span class="sort-arrow"></span></button>
+        <button class="icon-btn fb-rarity" data-sort="rarity">Rarità<span class="sort-arrow"></span></button>
+        <button class="icon-btn fb-type" data-filter="type">Tipo</button>
+      </div>
+      <div id="cardGrid" class="card-grid" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script>
+  const baseUrl = "https://cdns3.royaleapi.com/cdn-cgi/image/w=150,h=180,format=auto/static/img/cards/v7-eb583094/";
+  
+  const cardDatabase = [
+    // FIX: Aggiunta Goblin Machine
+    { name: "Goblin Machine", elixir: 0, rarity: "Legendary", type: "Troop", evo: 0, img: "goblin-machine" },
+    { name: "Goblin Cage Evolution", elixir: 4, rarity: "Rare", type: "Building", evo: 1, img: "goblin-cage-ev1", baseCard: "Goblin Cage" },
+    { name: "Lava Hound", elixir: 7, rarity: "Legendary", type: "Troop", evo: 0, img: "lava-hound" },
+    { name: "Barbarian Barrel", elixir: 2, rarity: "Epic", type: "Spell", evo: 0, img: "barbarian-barrel" },
+    { name: "Rascals", elixir: 5, rarity: "Common", type: "Troop", evo: 0, img: "rascals" },
+    { name: "Royal Ghost Evolution", elixir: 3, rarity: "Legendary", type: "Troop", evo: 1, img: "royal-ghost-ev1", baseCard: "Royal Ghost" },
+    { name: "Baby Dragon Evolution", elixir: 4, rarity: "Epic", type: "Troop", evo: 1, img: "baby-dragon-ev1", baseCard: "Baby Dragon" },
+    { name: "Zap Evolution", elixir: 2, rarity: "Common", type: "Spell", evo: 1, img: "zap-ev1", baseCard: "Zap" },
+    { name: "Hunter", elixir: 4, rarity: "Epic", type: "Troop", evo: 0, img: "hunter", evoCard: "Hunter Evolution" },
+    { name: "Battle Ram Evolution", elixir: 4, rarity: "Rare", type: "Troop", evo: 1, img: "battle-ram-ev1", baseCard: "Battle Ram" },
+    { name: "Bowler", elixir: 5, rarity: "Epic", type: "Troop", evo: 0, img: "bowler" },
+    { name: "Zappies", elixir: 4, rarity: "Rare", type: "Troop", evo: 0, img: "zappies" },
+    { name: "Cannon Cart", elixir: 5, rarity: "Epic", type: "Troop", evo: 0, img: "cannon-cart" },
+    { name: "Skeleton Dragons", elixir: 4, rarity: "Common", type: "Troop", evo: 0, img: "skeleton-dragons" },
+    { name: "Mega Minion", elixir: 3, rarity: "Rare", type: "Troop", evo: 0, img: "mega-minion" },
+    { name: "Skeleton Barrel Evolution", elixir: 3, rarity: "Common", type: "Troop", evo: 1, img: "skeleton-barrel-ev1", baseCard: "Skeleton Barrel" },
+    { name: "Heal Spirit", elixir: 1, rarity: "Rare", type: "Troop", evo: 0, img: "heal-spirit" },
+    { name: "Fisherman", elixir: 3, rarity: "Legendary", type: "Troop", evo: 0, img: "fisherman" },
+    { name: "Royal Giant Evolution", elixir: 6, rarity: "Common", type: "Troop", evo: 1, img: "royal-giant-ev1", baseCard: "Royal Giant" },
+    { name: "Giant", elixir: 5, rarity: "Rare", type: "Troop", evo: 0, img: "giant" },
+    { name: "Flying Machine", elixir: 4, rarity: "Rare", type: "Troop", evo: 0, img: "flying-machine" },
+    { name: "Mortar Evolution", elixir: 4, rarity: "Common", type: "Building", evo: 1, img: "mortar-ev1", baseCard: "Mortar" },
+    { name: "Phoenix", elixir: 4, rarity: "Legendary", type: "Troop", evo: 0, img: "phoenix" },
+    { name: "Bomb Tower", elixir: 4, rarity: "Rare", type: "Building", evo: 0, img: "bomb-tower" },
+    { name: "Bomber", elixir: 2, rarity: "Common", type: "Troop", evo: 0, img: "bomber", evoCard: "Bomber Evolution" },
+    { name: "Boss Bandit", elixir: 6, rarity: "Champion", type: "Troop", evo: 0, img: "boss-bandit" },
+    { name: "Graveyard", elixir: 5, rarity: "Legendary", type: "Spell", evo: 0, img: "graveyard" },
+    { name: "Electro Giant", elixir: 7, rarity: "Epic", type: "Troop", evo: 0, img: "electro-giant" },
+    { name: "Balloon", elixir: 5, rarity: "Epic", type: "Troop", evo: 0, img: "balloon" },
+    { name: "Bandit", elixir: 3, rarity: "Legendary", type: "Troop", evo: 0, img: "bandit" },
+    { name: "Golem", elixir: 8, rarity: "Epic", type: "Troop", evo: 0, img: "golem" },
+    { name: "Tombstone", elixir: 3, rarity: "Rare", type: "Building", evo: 0, img: "tombstone" },
+    { name: "Skeleton King", elixir: 4, rarity: "Champion", type: "Troop", evo: 0, img: "skeleton-king" },
+    { name: "Inferno Dragon Evolution", elixir: 4, rarity: "Legendary", type: "Troop", evo: 1, img: "inferno-dragon-ev1", baseCard: "Inferno Dragon" },
+    { name: "Skeleton Army Evolution", elixir: 3, rarity: "Epic", type: "Troop", evo: 1, img: "skeleton-army-ev1", baseCard: "Skeleton Army" },
+    { name: "Barbarians Evolution", elixir: 5, rarity: "Common", type: "Troop", evo: 1, img: "barbarians-ev1", baseCard: "Barbarians" },
+    { name: "Goblinstein", elixir: 3, rarity: "Champion", type: "Troop", evo: 0, img: "goblinstein" },
+    { name: "Fireball", elixir: 4, rarity: "Rare", type: "Spell", evo: 0, img: "fireball" },
+    { name: "Elixir Collector", elixir: 6, rarity: "Rare", type: "Building", evo: 0, img: "elixir-collector" },
+    { name: "Lightning", elixir: 6, rarity: "Epic", type: "Spell", evo: 0, img: "lightning" },
+    { name: "Golden Knight", elixir: 4, rarity: "Champion", type: "Troop", evo: 0, img: "golden-knight" },
+    { name: "Electro Spirit", elixir: 1, rarity: "Common", type: "Troop", evo: 0, img: "electro-spirit" },
+    { name: "Ice Golem", elixir: 2, rarity: "Rare", type: "Troop", evo: 0, img: "ice-golem" },
+    { name: "Royal Recruits Evolution", elixir: 7, rarity: "Common", type: "Troop", evo: 1, img: "royal-recruits-ev1", baseCard: "Royal Recruits" },
+    { name: "Tornado", elixir: 3, rarity: "Epic", type: "Spell", evo: 0, img: "tornado" },
+    { name: "Three Musketeers", elixir: 9, rarity: "Rare", type: "Troop", evo: 0, img: "three-musketeers" },
+    { name: "Goblin Cage", elixir: 4, rarity: "Rare", type: "Building", evo: 0, img: "goblin-cage", evoCard: "Goblin Cage Evolution" },
+    { name: "Minions", elixir: 3, rarity: "Common", type: "Troop", evo: 0, img: "minions" },
+    { name: "Freeze", elixir: 4, rarity: "Epic", type: "Spell", evo: 0, img: "freeze" },
+    { name: "P.E.K.K.A", elixir: 7, rarity: "Epic", type: "Troop", evo: 0, img: "pekka", evoCard: "P.E.K.K.A Evolution" },
+    { name: "Lumberjack Evolution", elixir: 4, rarity: "Legendary", type: "Troop", evo: 1, img: "lumberjack-ev1", baseCard: "Lumberjack" },
+    { name: "Vines", elixir: 1, rarity: "Epic", type: "Spell", evo: 0, img: "vines" },
+    { name: "Spirit Empress", elixir: 3, rarity: "Legendary", type: "Troop", evo: 0, img: "spirit-empress" },
+    { name: "Ice Wizard", elixir: 3, rarity: "Legendary", type: "Troop", evo: 0, img: "ice-wizard" },
+    { name: "Giant Snowball", elixir: 2, rarity: "Common", type: "Spell", evo: 0, img: "giant-snowball", evoCard: "Giant Snowball Evolution" },
+    { name: "Goblin Hut", elixir: 5, rarity: "Rare", type: "Building", evo: 0, img: "goblin-hut" },
+    { name: "Sparky", elixir: 6, rarity: "Legendary", type: "Troop", evo: 0, img: "sparky" },
+    { name: "Bomber Evolution", elixir: 2, rarity: "Common", type: "Troop", evo: 1, img: "bomber-ev1", baseCard: "Bomber" },
+    { name: "Hunter Evolution", elixir: 4, rarity: "Epic", type: "Troop", evo: 1, img: "hunter-ev1", baseCard: "Hunter" },
+    { name: "Executioner Evolution", elixir: 5, rarity: "Epic", type: "Troop", evo: 1, img: "executioner-ev1", baseCard: "Executioner" },
+    { name: "Bats Evolution", elixir: 2, rarity: "Common", type: "Troop", evo: 1, img: "bats-ev1", baseCard: "Bats" },
+    { name: "Dark Prince", elixir: 4, rarity: "Epic", type: "Troop", evo: 0, img: "dark-prince" },
+    { name: "Musketeer Evolution", elixir: 4, rarity: "Rare", type: "Troop", evo: 1, img: "musketeer-ev1", baseCard: "Musketeer" },
+    { name: "Night Witch", elixir: 4, rarity: "Legendary", type: "Troop", evo: 0, img: "night-witch" },
+    { name: "Battle Ram", elixir: 4, rarity: "Rare", type: "Troop", evo: 0, img: "battle-ram", evoCard: "Battle Ram Evolution" },
+    { name: "Goblin Giant Evolution", elixir: 6, rarity: "Epic", type: "Troop", evo: 1, img: "goblin-giant-ev1", baseCard: "Goblin Giant" },
+    { name: "Royal Hogs Evolution", elixir: 5, rarity: "Rare", type: "Troop", evo: 1, img: "royal-hogs-ev1", baseCard: "Royal Hogs" },
+    { name: "Royal Ghost", elixir: 3, rarity: "Legendary", type: "Troop", evo: 0, img: "royal-ghost", evoCard: "Royal Ghost Evolution" },
+    { name: "Furnace Evolution", elixir: 4, rarity: "Rare", type: "Building", evo: 1, img: "furnace-ev1", baseCard: "Furnace" },
+    { name: "Electro Wizard", elixir: 4, rarity: "Legendary", type: "Troop", evo: 0, img: "electro-wizard" },
+    { name: "Battle Healer", elixir: 4, rarity: "Rare", type: "Troop", evo: 0, img: "battle-healer" },
+    { name: "Lumberjack", elixir: 4, rarity: "Legendary", type: "Troop", evo: 0, img: "lumberjack", evoCard: "Lumberjack Evolution" },
+    { name: "X-Bow", elixir: 6, rarity: "Epic", type: "Building", evo: 0, img: "x-bow" },
+    { name: "Royal Giant", elixir: 6, rarity: "Common", type: "Troop", evo: 0, img: "royal-giant", evoCard: "Royal Giant Evolution" },
+    { name: "Goblins", elixir: 2, rarity: "Common", type: "Troop", evo: 0, img: "goblins" },
+    { name: "Guards", elixir: 3, rarity: "Epic", type: "Troop", evo: 0, img: "guards" },
+    { name: "Prince", elixir: 5, rarity: "Epic", type: "Troop", evo: 0, img: "prince" },
+    { name: "Archers Evolution", elixir: 3, rarity: "Common", type: "Troop", evo: 1, img: "archers-ev1", baseCard: "Archers" },
+    { name: "Magic Archer", elixir: 4, rarity: "Legendary", type: "Troop", evo: 0, img: "magic-archer" },
+    { name: "Skeletons", elixir: 1, rarity: "Common", type: "Troop", evo: 0, img: "skeletons", evoCard: "Skeletons Evolution" },
+    { name: "Minion Horde", elixir: 5, rarity: "Common", type: "Troop", evo: 0, img: "minion-horde" },
+    { name: "Giant Skeleton", elixir: 6, rarity: "Epic", type: "Troop", evo: 0, img: "giant-skeleton" },
+    { name: "Zap", elixir: 2, rarity: "Common", type: "Spell", evo: 0, img: "zap", evoCard: "Zap Evolution" },
+    { name: "Knight Evolution", elixir: 3, rarity: "Common", type: "Troop", evo: 1, img: "knight-ev1", baseCard: "Knight" },
+    { name: "Mother Witch", elixir: 4, rarity: "Legendary", type: "Troop", evo: 0, img: "mother-witch" },
+    { name: "Goblin Demolisher", elixir: 2, rarity: "Rare", type: "Troop", evo: 0, img: "goblin-demolisher" },
+    { name: "Ram Rider", elixir: 5, rarity: "Legendary", type: "Troop", evo: 0, img: "ram-rider" },
+    { name: "Goblin Drill Evolution", elixir: 4, rarity: "Epic", type: "Building", evo: 1, img: "goblin-drill-ev1", baseCard: "Goblin Drill" },
+    { name: "Wall Breakers Evolution", elixir: 2, rarity: "Epic", type: "Troop", evo: 1, img: "wall-breakers-ev1", baseCard: "Wall Breakers" },
+    { name: "Spear Goblins", elixir: 2, rarity: "Common", type: "Troop", evo: 0, img: "spear-goblins" },
+    { name: "Mini P.E.K.K.A", elixir: 4, rarity: "Rare", type: "Troop", evo: 0, img: "mini-pekka" },
+    { name: "Poison", elixir: 4, rarity: "Epic", type: "Spell", evo: 0, img: "poison" },
+    { name: "Dart Goblin", elixir: 3, rarity: "Rare", type: "Troop", evo: 0, img: "dart-goblin", evoCard: "Dart Goblin Evolution" },
+    { name: "Goblin Gang", elixir: 3, rarity: "Common", type: "Troop", evo: 0, img: "goblin-gang" },
+    { name: "Arrows", elixir: 3, rarity: "Common", type: "Spell", evo: 0, img: "arrows" },
+    { name: "Wall Breakers", elixir: 2, rarity: "Epic", type: "Troop", evo: 0, img: "wall-breakers", evoCard: "Wall Breakers Evolution" },
+    { name: "Baby Dragon", elixir: 4, rarity: "Epic", type: "Troop", evo: 0, img: "baby-dragon", evoCard: "Baby Dragon Evolution" },
+    { name: "Rage", elixir: 2, rarity: "Epic", type: "Spell", evo: 0, img: "rage" },
+    { name: "Fire Spirit", elixir: 1, rarity: "Common", type: "Troop", evo: 0, img: "fire-spirit" },
+    { name: "Goblin Barrel Evolution", elixir: 3, rarity: "Epic", type: "Spell", evo: 1, img: "goblin-barrel-ev1", baseCard: "Goblin Barrel" },
+    { name: "Giant Snowball Evolution", elixir: 2, rarity: "Common", type: "Spell", evo: 1, img: "giant-snowball-ev1", baseCard: "Giant Snowball" },
+    { name: "Electro Dragon Evolution", elixir: 5, rarity: "Epic", type: "Troop", evo: 1, img: "electro-dragon-ev1", baseCard: "Electro Dragon" },
+    { name: "Royal Hogs", elixir: 5, rarity: "Rare", type: "Troop", evo: 0, img: "royal-hogs", evoCard: "Royal Hogs Evolution" },
+    { name: "Archer Queen", elixir: 5, rarity: "Champion", type: "Troop", evo: 0, img: "archer-queen" },
+    { name: "Elite Barbarians", elixir: 6, rarity: "Common", type: "Troop", evo: 0, img: "elite-barbarians" },
+    { name: "Barbarians", elixir: 5, rarity: "Common", type: "Troop", evo: 0, img: "barbarians", evoCard: "Barbarians Evolution" },
+    { name: "Knight", elixir: 3, rarity: "Common", type: "Troop", evo: 0, img: "knight", evoCard: "Knight Evolution" },
+    { name: "Cannon Evolution", elixir: 3, rarity: "Common", type: "Building", evo: 1, img: "cannon-ev1", baseCard: "Cannon" },
+    { name: "Monk", elixir: 5, rarity: "Champion", type: "Troop", evo: 0, img: "monk" },
+    { name: "Valkyrie Evolution", elixir: 4, rarity: "Rare", type: "Troop", evo: 1, img: "valkyrie-ev1", baseCard: "Valkyrie" },
+    { name: "Inferno Dragon", elixir: 4, rarity: "Legendary", type: "Troop", evo: 0, img: "inferno-dragon", evoCard: "Inferno Dragon Evolution" },
+    { name: "Mighty Miner", elixir: 4, rarity: "Champion", type: "Troop", evo: 0, img: "mighty-miner" },
+    { name: "Princess", elixir: 3, rarity: "Legendary", type: "Troop", evo: 0, img: "princess" },
+    { name: "Earthquake", elixir: 3, rarity: "Rare", type: "Spell", evo: 0, img: "earthquake" },
+    { name: "Miner", elixir: 3, rarity: "Legendary", type: "Troop", evo: 0, img: "miner" },
+    { name: "Skeletons Evolution", elixir: 1, rarity: "Common", type: "Troop", evo: 1, img: "skeletons-ev1", baseCard: "Skeletons" },
+    { name: "P.E.K.K.A Evolution", elixir: 7, rarity: "Epic", type: "Troop", evo: 1, img: "pekka-ev1", baseCard: "P.E.K.K.A" },
+    { name: "Wizard Evolution", elixir: 5, rarity: "Rare", type: "Troop", evo: 1, img: "wizard-ev1", baseCard: "Wizard" },
+    { name: "Witch Evolution", elixir: 5, rarity: "Epic", type: "Troop", evo: 1, img: "witch-ev1", baseCard: "Witch" },
+    { name: "Hog Rider", elixir: 4, rarity: "Rare", type: "Troop", evo: 0, img: "hog-rider" },
+    { name: "The Log", elixir: 2, rarity: "Legendary", type: "Spell", evo: 0, img: "the-log" },
+    { name: "Musketeer", elixir: 4, rarity: "Rare", type: "Troop", evo: 0, img: "musketeer", evoCard: "Musketeer Evolution" },
+    { name: "Clone", elixir: 3, rarity: "Epic", type: "Spell", evo: 0, img: "clone" },
+    { name: "Ice Spirit", elixir: 1, rarity: "Common", type: "Troop", evo: 0, img: "ice-spirit", evoCard: "Ice Spirit Evolution" },
+    { name: "Mega Knight Evolution", elixir: 7, rarity: "Legendary", type: "Troop", evo: 1, img: "mega-knight-ev1", baseCard: "Mega Knight" },
+    { name: "Skeleton Army", elixir: 3, rarity: "Epic", type: "Troop", evo: 0, img: "skeleton-army", evoCard: "Skeleton Army Evolution" },
+    { name: "Royal Recruits", elixir: 7, rarity: "Common", type: "Troop", evo: 0, img: "royal-recruits", evoCard: "Royal Recruits Evolution" },
+    { name: "Elixir Golem", elixir: 3, rarity: "Rare", type: "Troop", evo: 0, img: "elixir-golem" },
+    { name: "Goblin Drill", elixir: 4, rarity: "Epic", type: "Building", evo: 0, img: "goblin-drill", evoCard: "Goblin Drill Evolution" },
+    { name: "Furnace", elixir: 4, rarity: "Rare", type: "Building", evo: 0, img: "furnace", evoCard: "Furnace Evolution" },
+    { name: "Cannon", elixir: 3, rarity: "Common", type: "Building", evo: 0, img: "cannon", evoCard: "Cannon Evolution" },
+    { name: "Little Prince", elixir: 3, rarity: "Champion", type: "Troop", evo: 0, img: "little-prince" },
+    { name: "Bats", elixir: 2, rarity: "Common", type: "Troop", evo: 0, img: "bats", evoCard: "Bats Evolution" },
+    { name: "Mega Knight", elixir: 7, rarity: "Legendary", type: "Troop", evo: 0, img: "mega-knight", evoCard: "Mega Knight Evolution" },
+    { name: "Firecracker Evolution", elixir: 3, rarity: "Common", type: "Troop", evo: 1, img: "firecracker-ev1", baseCard: "Firecracker" },
+    { name: "Inferno Tower", elixir: 5, rarity: "Rare", type: "Building", evo: 0, img: "inferno-tower" },
+    { name: "Tesla Evolution", elixir: 4, rarity: "Common", type: "Building", evo: 1, img: "tesla-ev1", baseCard: "Tesla" },
+    { name: "Dart Goblin Evolution", elixir: 3, rarity: "Rare", type: "Troop", evo: 1, img: "dart-goblin-ev1", baseCard: "Dart Goblin" },
+    { name: "Royal Delivery", elixir: 3, rarity: "Common", type: "Spell", evo: 0, img: "royal-delivery" },
+    { name: "Skeleton Barrel", elixir: 3, rarity: "Common", type: "Troop", evo: 0, img: "skeleton-barrel", evoCard: "Skeleton Barrel Evolution" },
+    { name: "Valkyrie", elixir: 4, rarity: "Rare", type: "Troop", evo: 0, img: "valkyrie", evoCard: "Valkyrie Evolution" },
+    { name: "Rocket", elixir: 6, rarity: "Rare", type: "Spell", evo: 0, img: "rocket" },
+    { name: "Mortar", elixir: 4, rarity: "Common", type: "Building", evo: 0, img: "mortar", evoCard: "Mortar Evolution" },
+    { name: "Tesla", elixir: 4, rarity: "Common", type: "Building", evo: 0, img: "tesla", evoCard: "Tesla Evolution" },
+    { name: "Ice Spirit Evolution", elixir: 1, rarity: "Common", type: "Troop", evo: 1, img: "ice-spirit-ev1", baseCard: "Ice Spirit" },
+    { name: "Barbarian Hut", elixir: 7, rarity: "Rare", type: "Building", evo: 0, img: "barbarian-hut" },
+    { name: "Archers", elixir: 3, rarity: "Common", type: "Troop", evo: 0, img: "archers", evoCard: "Archers Evolution" },
+    { name: "Goblin Barrel", elixir: 3, rarity: "Epic", type: "Spell", evo: 0, img: "goblin-barrel", evoCard: "Goblin Barrel Evolution" },
+    { name: "Firecracker", elixir: 3, rarity: "Common", type: "Troop", evo: 0, img: "firecracker", evoCard: "Firecracker Evolution" },
+    { name: "Wizard", elixir: 5, rarity: "Rare", type: "Troop", evo: 0, img: "wizard", evoCard: "Wizard Evolution" },
+    { name: "Executioner", elixir: 5, rarity: "Epic", type: "Troop", evo: 0, img: "executioner", evoCard: "Executioner Evolution" },
+    { name: "Witch", elixir: 5, rarity: "Epic", type: "Troop", evo: 0, img: "witch", evoCard: "Witch Evolution" },
+    { name: "Mirror", elixir: 1, rarity: "Epic", type: "Spell", evo: 0, img: "mirror" }, // Elixir +1
+    { name: "Goblin Giant", elixir: 6, rarity: "Epic", type: "Troop", evo: 0, img: "goblin-giant", evoCard: "Goblin Giant Evolution" },
+    { name: "Rune Giant", elixir: 6, rarity: "Epic", type: "Troop", evo: 0, img: "rune-giant" },
+    { name: "Electro Dragon", elixir: 5, rarity: "Epic", type: "Troop", evo: 0, img: "electro-dragon", evoCard: "Electro Dragon Evolution" }
+  ];
+
+  // MOD: Funzioni helper per il nuovo database
+  const getCardByName = (name) => cardDatabase.find(c => c.name === name);
+  const rarityOrder = { 'Common': 1, 'Rare': 2, 'Epic': 3, 'Legendary': 4, 'Champion': 5 };
+  const typeOrder = { 'Troop': 1, 'Building': 2, 'Spell': 3 };
+  const typeTranslations = { 'Troop': 'Truppa', 'Building': 'Edificio', 'Spell': 'Incantesimo' };
+
+
+  const abbreviations = {
+    'mk': 'megaknight',
+    'rg': ['royalgiant', 'royalghost'],
+    'egiant': 'electrogiant',
+    'ewiz': 'electrowizard',
+    'idragon': 'infernodragon',
+    'ebarbs': 'elitebarbarians',
+    'peka': 'pekka',
+    'minipeca': 'minipekka',
+    'pump': 'elixircollector', // MOD: Aggiunto
+    'ma': 'magicarcher' // MOD: Aggiunto
+  };
+  
+  // MOD: Archetipi
+  const deckArchetypes = {
+    '2.6': ['cannon', 'thelog'],
+    'logbait': ['princess', 'goblinbarrel', 'thelog']
+  };
+
+  function normalizeString(str) {
+    if (!str) return '';
+    return str.toLowerCase().replace(/[\s.-]+/g, '');
+  }
+
+  function fuzzyMatch(cardName, query) {
+    const normName = normalizeString(cardName);
+    let normQuery = normalizeString(query);
+
+    if (abbreviations[normQuery]) {
+      const abrv = abbreviations[normQuery];
+      if (Array.isArray(abrv)) {
+        return abrv.some(a => normName.includes(a));
+      } else {
+        normQuery = abrv;
+      }
+    }
+
+    if (normQuery.length > 2 && normQuery.startsWith('e') && !normQuery.startsWith('el') && !normQuery.startsWith('ex')) {
+      const restOfQuery = normQuery.substring(1);
+      if (normName.startsWith('electro') && normName.endsWith(restOfQuery)) {
+        return true;
+      }
+    }
+
+    return normName.includes(normQuery);
+  }
+  
+  const qs=(s,el=document)=>el.querySelector(s);
+  const qsa=(s,el=document)=>[...el.querySelectorAll(s)];
+  
+  const imageOf = (name) => {
+    const card = getCardByName(name);
+    if (!card || !card.img) return "https://cdns3.royaleapi.com/cdn-cgi/image/w=150,h=180,format=auto/static/img/cards/v7-eb583094/not-found.png";
+    return baseUrl + card.img + ".png";
+  };
+  function ytId(u){const r=/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;const m=u.match(r);return m?m[1]:null}
+  function getTimeFromUrl(u){try{const url=new URL(u);const t=url.searchParams.get('t');if(!t) return null;return parseInt(t,10)||0;}catch{return null;}}
+  const fmtTime=s=>{const m=Math.floor(s/60),ss=(s%60).toString().padStart(2,'0');return `${m}:${ss}`};
+  const isEvo = (name) => {
+    const card = getCardByName(name);
+    return card ? card.evo === 1 : false;
+  };
+
+  const KEY='clashRoyaleDecks.v4';
+  let store={
+    active:'Default',
+    collections:{'Default':{name:'Default',decks:[]}},
+    settings: { enableHalfDecks: true, reduceDeckPadding: false, enableAcrylic: false, enableGlass: false } // MOD: Aggiunto Glass
+  };
+  function migrateIfNeeded(){
+      if (typeof __INJECTED_STORE__ !== 'undefined') { 
+          store = __INJECTED_STORE__; 
+          console.log('Store injected from HTML.'); 
+          save(); // Il nuovo save() gestirà l'eccezione
+          return; 
+      }
+
+      let v = null;
+      try {
+          v = localStorage.getItem(KEY);
+      } catch (e) {
+          console.warn('LocalStorage non è accessibile in lettura. Avvio in modalità "sola visualizzazione".', e);
+      }
+      
+      if(v){
+        store=JSON.parse(v);
+        if (!store.settings) {
+          store.settings = { enableHalfDecks: true, reduceDeckPadding: false, enableAcrylic: false, enableGlass: false }; // MOD: Aggiunto Glass
+        }
+        // MOD: Aggiungi proprietà mancanti
+        if (store.settings.enableAcrylic === undefined) {
+          store.settings.enableAcrylic = false;
+        }
+        if (store.settings.enableGlass === undefined) { // MOD: Aggiunto Glass
+          store.settings.enableGlass = false;
+        }
+        // Assicura che non siano attivi entrambi all'avvio
+        if (store.settings.enableAcrylic && store.settings.enableGlass) {
+            store.settings.enableAcrylic = true; // Priorità ad Acrilico
+            store.settings.enableGlass = false;
+        }
+      } else {
+        // Se non c'è 'v' (perché non esiste o perché localStorage ha fallito)
+        store.collections.Default.decks=[{name:'Hog Cycle',cards:['Hog Rider','Ice Spirit','Skeletons','Cannon'],links:[]}];
+        save(); // Il nuovo save() gestirà l'eccezione
+      }
+  }
+  function save(){
+    try {
+      localStorage.setItem(KEY,JSON.stringify(store));
+    } catch (e) {
+      console.warn('LocalStorage non è disponibile. Le modifiche sono solo in memoria e andranno perse.', e);
+    }
+  }
+  const currentDecks=()=>store.collections[store.active].decks;
+
+  const drawer=qs('#drawer');
+  const collectionsList=qs('#collections');
+  qs('#openDrawer').addEventListener('click',()=>{drawer.classList.add('show');drawer.setAttribute('aria-hidden','false');document.body.classList.add('drawer-open');renderCollections();});
+  drawer.addEventListener('click',e=>{if(e.target===drawer){drawer.classList.remove('show');drawer.setAttribute('aria-hidden','true');document.body.classList.remove('drawer-open');}});
+  qs('#addCollection').addEventListener('click',()=>{const name=prompt('Nome nuova collezione');if(!name)return;if(store.collections[name]){alert('Esiste già una collezione con questo nome');return;}store.collections[name]={name,decks:[]};store.active=name;save();renderCollections();render();});
+  
+  const halfDecksToggle = qs('#toggleHalfDecks');
+  const paddingToggle = qs('#toggleDeckPadding');
+  const acrylicToggle = qs('#toggleAcrylicEffect'); // MOD: Selettore Acrilico
+  const glassToggle = qs('#toggleGlassEffect'); // MOD: Selettore Glass
+  const exportBtn = qs('#exportData'); // MOD: Selettore Esporta
+  const importBtn = qs('#importData'); // MOD: Selettore Importa
+  const shareBtn = qs('#shareData'); // MOD: Selettore Condividi
+  const importFile = qs('#importFile'); // MOD: Selettore File
+  
+  halfDecksToggle.addEventListener('change', () => {
+    store.settings.enableHalfDecks = halfDecksToggle.checked;
+    save();
+    render();
+  });
+  
+  paddingToggle.addEventListener('change', () => {
+    store.settings.reduceDeckPadding = paddingToggle.checked;
+    save();
+    render();
+  });
+  
+  // FIX: Helper per download
+  function downloadBlob(blob, fileName) {
+      try {
+          const dataUri = URL.createObjectURL(blob);
+          const linkElement = document.createElement('a');
+          linkElement.setAttribute('href', dataUri);
+          linkElement.setAttribute('download', fileName);
+          linkElement.click();
+          URL.revokeObjectURL(dataUri); // Pulizia
+      } catch (err) {
+          console.error('Errore download:', err);
+          showToast('Errore during download', 3000);
+      }
+  }
+
+  // Funzione helper per generare il blob JSON
+  function getJsonBlob() {
+      // Pulisci prima di esportare (rimuovi stati UI temporanei)
+      const cleanStore = JSON.parse(JSON.stringify(store)); // Deep copy
+      Object.values(cleanStore.collections).forEach(col => {
+          col.decks.forEach(d => {
+              delete d.__edit;
+              delete d.delmark;
+          });
+      });
+      const dataStr = JSON.stringify(cleanStore);
+      return new Blob([dataStr], { type: 'application/json' });
+  }
+  
+  // FIX: Funzione per creare HTML auto-contenente
+  function createStandaloneHtmlBlob() {
+      // Pulisci lo store
+      const cleanStore = JSON.parse(JSON.stringify(store)); // Deep copy
+      Object.values(cleanStore.collections).forEach(col => {
+          col.decks.forEach(d => {
+              delete d.__edit;
+              delete d.delmark;
+          });
+      });
+
+      let htmlContent = document.documentElement.outerHTML;
+
+      // 1. Inietta i dati dello store
+      const scriptStartMarker = "const baseUrl =";
+      const injection = `let __INJECTED_STORE__ = ${JSON.stringify(cleanStore)};\n`;
+      if (htmlContent.includes(scriptStartMarker)) {
+           htmlContent = htmlContent.replace(scriptStartMarker, injection + scriptStartMarker);
+      } else {
+          console.error("Marcatore inizio script non trovato!");
+          return null; 
+      }
+
+      // 2. Modifica migrateIfNeeded per leggere i dati iniettati
+      const migrateFuncOld = "function migrateIfNeeded(){";
+      // Aggiungi il check per __INJECTED_STORE__ all'inizio della funzione
+      const migrateFuncNew = `function migrateIfNeeded(){\n      if (typeof __INJECTED_STORE__ !== 'undefined') { store = __INJECTED_STORE__; console.log('Store injected from HTML.'); save(); return; }\n`;
+      if (htmlContent.includes(migrateFuncOld)) {
+          htmlContent = htmlContent.replace(migrateFuncOld, migrateFuncNew);
+      } else {
+           console.error("Funzione migrateIfNeeded() non trovata!");
+           return null;
+      }
+      
+      return new Blob([htmlContent], { type: 'text/html' });
+  }
+
+  // MOD: Listener Esporta (ora esporta JSON)
+  exportBtn.addEventListener('click', () => {
+      const blob = getJsonBlob();
+      downloadBlob(blob, 'clash_decks_backup.json');
+      showToast('Backup JSON esportato', 2000);
+      drawer.classList.remove('show');
+      document.body.classList.remove('drawer-open');
+  });
+  
+  // FIX: Listener Condividi (ora condivide HTML)
+  shareBtn.addEventListener('click', async () => {
+      const blob = createStandaloneHtmlBlob();
+      if (!blob) {
+          showToast('Errore nella creazione del file HTML', 3000);
+          return;
+      }
+      
+      const file = new File([blob], 'clash_decks.html', { type: 'text/html' });
+      
+      const shareData = {
+          files: [file],
+          title: 'Clash Royale Decks',
+          text: 'Ecco i miei deck di Clash Royale (file HTML).'
+      };
+
+      if (navigator.canShare && navigator.canShare(shareData)) {
+          try {
+              await navigator.share(shareData);
+              showToast('File HTML condiviso!', 2000);
+              drawer.classList.remove('show');
+              document.body.classList.remove('drawer-open');
+          } catch (err) {
+              if (err.name !== 'AbortError') {
+                  console.error('Errore Web Share:', err);
+                  showToast('Condivisione fallita. Avvio download HTML...', 3000);
+                  downloadBlob(blob, 'clash_decks.html');
+              }
+          }
+      } else {
+          showToast('Condivisione file non supportata. Avvio download HTML...', 3000);
+          downloadBlob(blob, 'clash_decks.html');
+      }
+  });
+
+  // MOD: Listener Importa (importa JSON)
+  importBtn.addEventListener('click', () => {
+      importFile.click(); // Apri il selettore file
+  });
+  
+  importFile.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (!confirm('Importando un file JSON sovrascriverai tutti i tuoi deck e collezioni attuali. Continuare?')) {
+          importFile.value = ''; // Resetta input
+          return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+          try {
+              const newStore = JSON.parse(e.target.result);
+              // Validazione base
+              if (newStore && newStore.collections && newStore.active && newStore.settings) {
+                  store = newStore;
+                  save();
+                  showToast('Dati importati con successo!', 2000);
+                  // Ricarica tutto
+                  migrateIfNeeded(); // Assicura che i nuovi settaggi siano validi
+                  applyVisualSettings(); // Applica nuovi settaggi visivi
+                  renderCollections();
+                  render();
+                  drawer.classList.remove('show');
+                  document.body.classList.remove('drawer-open');
+              } else {
+                  throw new Error('File non valido o corrotto');
+              }
+          } catch (err) {
+              console.error('Errore importazione:', err);
+              showToast('Errore: file non valido o corrotto', 3000);
+          } finally {
+              importFile.value = ''; // Resetta input
+          }
+      };
+      reader.readAsText(file);
+  });
+
+  // MOD: Listener Acrilico
+  acrylicToggle.addEventListener('change', () => {
+      store.settings.enableAcrylic = acrylicToggle.checked;
+      if (store.settings.enableAcrylic) {
+          store.settings.enableGlass = false; // Disattiva glass
+      }
+      save();
+      applyVisualSettings();
+  });
+
+  // MOD: Listener Glass
+  glassToggle.addEventListener('change', () => {
+      store.settings.enableGlass = glassToggle.checked;
+      if (store.settings.enableGlass) {
+          store.settings.enableAcrylic = false; // Disattiva acrylic
+      }
+      save();
+      applyVisualSettings();
+  });
+  
+  function applyVisualSettings() {
+      // Applica stati dal save
+      acrylicToggle.checked = store.settings.enableAcrylic;
+      glassToggle.checked = store.settings.enableGlass;
+      
+      document.body.classList.toggle('acrylic-enabled', store.settings.enableAcrylic);
+      document.body.classList.toggle('glass-enabled', store.settings.enableGlass);
+  }
+
+  function renderCollections(){
+    collectionsList.innerHTML='';
+    Object.values(store.collections).forEach(col=>{
+      const row=document.createElement('div');
+      row.style.display='grid';
+      row.style.gridTemplateColumns='1fr auto auto';
+      row.style.gap='8px';
+      const btn=document.createElement('button');
+      btn.className='col-btn'+(store.active===col.name?' active':'');
+      btn.innerHTML=`<span>${col.name}</span><span>${col.decks.length}</span>`;
+      btn.addEventListener('click',()=>{store.active=col.name;save();drawer.classList.remove('show');drawer.setAttribute('aria-hidden','true');document.body.classList.remove('drawer-open');render();});
+      const rename=document.createElement('button');
+      rename.className='icon-btn';
+      rename.textContent='✎';
+      rename.addEventListener('click',e=>{e.stopPropagation();const nu=prompt('Rinomina collezione',col.name);if(!nu||nu===col.name)return;if(store.collections[nu]){alert('Esiste già una collezione con questo nome');return;}const decksCopy=col.decks;delete store.collections[col.name];store.collections[nu]={name:nu,decks:decksCopy};if(store.active===col.name)store.active=nu;save();renderCollections();render();});
+      const remove=document.createElement('button');
+      remove.className='icon-btn delete';
+      remove.textContent='🗑';
+      remove.addEventListener('click',e=>{e.stopPropagation();if(!confirm('Eliminare questa collezione?'))return;const names=Object.keys(store.collections);if(names.length===1){alert('Deve esistere almeno una collezione.');return;}delete store.collections[col.name];if(store.active===col.name){store.active=Object.keys(store.collections)[0];}save();renderCollections();render();});
+      row.appendChild(btn);
+      row.appendChild(rename);
+      row.appendChild(remove);
+      collectionsList.appendChild(row);
+    });
+    
+    halfDecksToggle.checked = store.settings.enableHalfDecks;
+    paddingToggle.checked = store.settings.reduceDeckPadding;
+    acrylicToggle.checked = store.settings.enableAcrylic; // MOD: Stato Acrilico
+    glassToggle.checked = store.settings.enableGlass; // MOD: Stato Glass
+  }
+
+  let filterMode='all';
+  let typeFilter = 'all';
+  let pickerCtx={deck:null,slot:null};
+
+  let draggingElement = null;
+  let longPressTimer = null;
+  
+  // MOD: Logica FAB (click vs long press)
+  const fab = qs('#addDeck');
+  let fabTimer;
+  fab.addEventListener('touchstart', (e) => {
+      fabTimer = setTimeout(() => {
+          e.preventDefault(); // prevent click
+          fabTimer = null; // flag as long-pressed
+          addSeparator();
+      }, 400);
+  }, { passive: false });
+  fab.addEventListener('touchend', () => {
+      if (fabTimer) { // Not long-pressed
+          clearTimeout(fabTimer);
+          addDeck();
+      }
+      fabTimer = null; // Assicura reset
+  });
+  fab.addEventListener('click', (e) => {
+      if (!('ontouchstart' in window)) { // Fallback for desktop
+          addDeck();
+      }
+  });
+  
+  function addDeck() {
+      const decks = currentDecks();
+      decks.push({ name: 'Nuovo deck', cards: [], links: [], __edit: true });
+      save();
+      render();
+  }
+  function addSeparator() {
+      const decks = currentDecks();
+      // Add separator *before* the fab button logic, but visually it's fine
+      decks.push({ type: 'separator', name: 'Separatore', id: crypto.randomUUID(), __edit: true });
+      save();
+      render();
+  }
+
+  function render(){
+    const title=document.querySelector('h1');
+    title.textContent=store.active;
+    const decks=currentDecks();
+    const grid=qs('#grid'); grid.innerHTML='';
+
+    const subtitle=qs('#subtitle'); subtitle.style.display=decks.length<=1?'block':'none';
+    
+    const totalDecks = decks.length;
+    const halfDecksEnabled = store.settings.enableHalfDecks;
+    const isMobile = window.matchMedia('(max-width:760px)').matches;
+
+    decks.forEach((d,idx)=>{
+      // MOD: Refactor in due funzioni
+      if (d.type === 'separator') {
+        renderSeparator(d, idx);
+      } else {
+        renderDeck(d, idx);
+      }
+    });
+  }
+
+  function renderDeck(d, idx) {
+    const decks = currentDecks();
+    const grid = qs('#grid');
+    const totalDecks = decks.length;
+    const halfDecksEnabled = store.settings.enableHalfDecks;
+    const isMobile = window.matchMedia('(max-width:760px)').matches;
+    
+    // MOD: Fix "Deck con 1 riga" (rimosso isMobile check)
+    const isHalfDeck = halfDecksEnabled && totalDecks >= 4 && !d.__edit && !(d.cards.slice(4).some(Boolean));
+    // MOD: Rimosso isMobile check
+    const isPaddingReduced = store.settings.reduceDeckPadding;
+    
+    const deck=document.createElement('article');
+    deck.className = 'deck' + 
+                    (d.__edit ? ' edit' : '') + 
+                    (isHalfDeck ? ' half-height' : '') +
+                    (isPaddingReduced ? ' reduced-padding' : '');
+    deck.draggable=!d.__edit;
+    deck.dataset.index=idx;
+
+    deck.innerHTML=`
+      <div class="deck-head">
+        <div class="deck-title" ${d.__edit?"contenteditable=\"true\"":""} spellcheck="false">${d.name||''}</div>
+        <button class="icon-btn editbtn" aria-pressed="${!!d.__edit}">${d.__edit?'Salva':'✎'}</button>
+        <button class="icon-btn delete" title="Elimina">🗑</button>
+      </div>
+      <div class="cards"></div>
+      <div class="deck-bg"></div> <!-- MOD: Div per sfondo acrilico -->
+      ${d.__edit?`
+        <div class="links" aria-label="Link YouTube"></div>
+        <div class="add-link">
+          <input class="link-url" placeholder="Link video..." style="flex-grow:4" />
+          <input class="link-time" placeholder="m:ss" style="flex-grow:1;min-width:40px;text-align:center;" />
+          <button class="icon-btn addlink">Aggiungi</button>
+        </div>`:''}
+      <div class="yt-dd" role="menu"></div>`;
+
+    const titleEl=deck.querySelector('.deck-title');
+    const headEl=deck.querySelector('.deck-head');
+    const editBtn=deck.querySelector('.editbtn');
+    const delBtn=deck.querySelector('.delete');
+
+    headEl.addEventListener('click',e=>{if(d.__edit) return; e.stopPropagation(); deck.classList.add('show-ctrl'); clearTimeout(deck._ctrlTimer); deck._ctrlTimer=setTimeout(()=>deck.classList.remove('show-ctrl'),2000); titleEl.classList.add('tap-anim'); setTimeout(()=>titleEl.classList.remove('tap-anim'),200);});
+
+    deck.addEventListener('dragstart',e=>{ if(d.__edit){e.preventDefault();return;} deck.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; document.body.classList.add('deck-is-dragging');});
+    deck.addEventListener('dragend',()=>{ deck.classList.remove('dragging'); document.body.classList.remove('deck-is-dragging'); const order=qsa('.deck, .deck-separator').map(n=>parseInt(n.dataset.index,10)); store.collections[store.active].decks=order.map(i=>decks[i]); save(); render();});
+    deck.addEventListener('dragover',e=>{ e.preventDefault(); const dragging=qs('.deck.dragging, .deck-separator.dragging'); if(!dragging||dragging===deck) return; const rect=deck.getBoundingClientRect(); const before=(e.clientY-rect.top)<rect.height/2; deck.parentNode.insertBefore(dragging,before?deck:deck.nextSibling);});
+
+    let tX=0,tY=0,moved=false;
+    deck.addEventListener('touchstart',e=>{ 
+      tX=e.touches[0].clientX; 
+      tY=e.touches[0].clientY; 
+      moved=false; 
+      if(d.__edit || draggingElement) return; 
+      longPressTimer = setTimeout(() => {
+          e.preventDefault();
+          handleMobileDragStart(e, deck);
+      }, 350);
+    },{passive:false});
+
+    deck.addEventListener('touchmove',e=>{ 
+      // MOD: Sensibilità drag
+      const dx=Math.abs(e.touches[0].clientX-tX), dy=Math.abs(e.touches[0].clientY-tY); 
+      if(dx>4||dy>4) { // Ridotto da 6 a 4
+        moved=true; 
+        clearTimeout(longPressTimer);
+      }
+    },{passive:true});
+    
+    deck.addEventListener('touchend',e=>{ 
+      clearTimeout(longPressTimer); 
+      if(d.__edit || draggingElement) return; 
+      if(!moved){ 
+        deck.classList.add('show-ctrl'); 
+        clearTimeout(deck._ctrlTimer); 
+        deck._ctrlTimer=setTimeout(()=>deck.classList.remove('show-ctrl'),2000);
+      }
+    },{passive:true});
+
+    if(d.__edit){
+      titleEl.setAttribute('contenteditable','true');
+      setTimeout(()=>{ try{ titleEl.focus(); const sel=window.getSelection(); const range=document.createRange(); range.selectNodeContents(titleEl); range.collapse(false); sel.removeAllRanges(); sel.addRange(range);}catch{} },0);
+      
+      // FIX: Salva su blur
+      titleEl.addEventListener('blur',e=>{ 
+          const newName = titleEl.textContent.trim();
+          if (d.name !== newName) {
+              d.name = (newName === 'Nuovo deck') ? '' : newName;
+              save(); // Salva solo se il nome è cambiato
+          }
+      });
+      
+      titleEl.addEventListener('keydown',e=>{ 
+          if(e.key==='Enter'){ 
+              e.preventDefault(); 
+              titleEl.blur(); // Trigger blur to save
+              // Manually trigger the save logic from the button
+              const scrollY = window.scrollY;
+              // d.name salvato dal blur
+              d.__edit = false; // Hitting Enter saves and exits edit mode
+              save();
+              render();
+              window.scrollTo(0, scrollY);
+          }
+      });
+    }
+
+    // FIX: Matita
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Importante per non triggerare altri click
+      const scrollY = window.scrollY;
+      
+      if (d.__edit) { // Sta salvando
+          const newName = titleEl.textContent.trim();
+          d.name = (newName === 'Nuovo deck') ? '' : newName;
+      }
+      
+      d.__edit=!d.__edit;
+      if(!d.__edit) deck.classList.remove('delmark');
+      save();
+      render();
+      window.scrollTo(0, scrollY);
+    });
+    
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (deck.classList.contains('delmark')) {
+        decks.splice(idx, 1);
+        save();
+        render();
+      } else {
+        qsa('.deck.delmark, .deck-separator.delmark').forEach(d => { 
+          d.classList.remove('delmark'); 
+          const btn = d.querySelector('.delete');
+          if(btn) {
+            btn.textContent = '🗑';
+            btn.style.color = '';
+          }
+        });
+        deck.classList.add('delmark');
+        delBtn.textContent = 'Conferma?';
+        delBtn.style.color = 'var(--danger)';
+        
+        const clickAway = (evt) => {
+          const clickedEl = evt.target.closest('.deck, .deck-separator');
+          if (clickedEl === deck) return; 
+          
+          deck.classList.remove('delmark');
+          delBtn.textContent = '🗑';
+          delBtn.style.color = '';
+          document.removeEventListener('click', clickAway, { capture: true });
+          document.removeEventListener('touchstart', clickAway, { capture: true });
+        };
+        
+        setTimeout(() => {
+            document.addEventListener('click', clickAway, { capture: true, once: true });
+            document.addEventListener('touchstart', clickAway, { capture: true, once: true });
+        }, 0);
+      }
+    });
+
+    const cardsWrap=deck.querySelector('.cards');
+    
+    // MOD: Logica Sfondo Acrilico
+    if ((store.settings.enableAcrylic || store.settings.enableGlass) && !d.__edit) { // MOD: Attiva anche per Glass
+        const bgDiv = deck.querySelector('.deck-bg');
+        const bgGrid = document.createElement('div');
+        bgGrid.className = 'deck-bg-grid';
+        (d.cards || []).forEach(name => {
+            if (name) {
+                const card = getCardByName(name);
+                if (card && card.img) {
+                    const img = new Image();
+                    img.src = imageOf(name);
+                    img.className = 'deck-bg-img';
+                    bgGrid.appendChild(img);
+                }
+            }
+        });
+        bgDiv.appendChild(bgGrid);
+    }
+    
+    d.cards=d.cards||[];
+    for(let i=0; i < (isHalfDeck ? 4 : 8); i++){
+      const slot=document.createElement('div');
+      slot.className='slot'+(d.cards[i]?' filled':' empty');
+      slot.dataset.i=i;
+      const name=d.cards[i];
+      if(name){
+        const card = getCardByName(name); // MOD: Get card data
+        const img=new Image(); img.src=imageOf(name); img.alt=name;
+        
+        // MOD: Add 'evo' class if it's Evo OR Champion
+        if(isEvo(name) || (card && card.rarity === 'Champion')){
+          slot.classList.add('evo');
+          if(/royal-ghost-ev1/i.test(card?.img)) slot.classList.add('evo-ghost');
+          if(/inferno-dragon-ev1/i.test(card?.img)) slot.classList.add('evo-inferno');
+        }
+        slot.appendChild(img);
+        if(d.__edit){ const rm=document.createElement('button'); rm.className='remove'; rm.textContent='×'; rm.addEventListener('click',e=>{e.stopPropagation(); d.cards[i]=null; save(); render();}); slot.appendChild(rm); }
+      } else if(d.__edit){ slot.textContent='+'; }
+      slot.addEventListener('click',()=>{ if(!d.__edit){ if(d.cards[i] && d.links?.length){ showDropdown(deck,d.links); } return; } openPicker(idx,i); });
+      cardsWrap.appendChild(slot);
+    }
+
+    if(d.__edit){
+      const linksWrap=deck.querySelector('.links'); d.links=d.links||[];
+      d.links.forEach((link,li)=>{ const pill=document.createElement('div'); pill.className='yt-pill'; pill.innerHTML=`<span>Video ${li+1}</span>`; pill.addEventListener('click',()=>window.open(link,'_blank')); const close=document.createElement('button'); close.className='close'; close.textContent='×'; close.addEventListener('click',e=>{e.stopPropagation(); d.links.splice(li,1); save(); render();}); pill.appendChild(close); linksWrap.appendChild(pill); });
+      
+      const urlInput = deck.querySelector('.add-link .link-url');
+      const timeInput = deck.querySelector('.add-link .link-time');
+      deck.querySelector('.add-link .addlink').addEventListener('click', () => {
+          let v = urlInput.value.trim();
+          if (!v) return;
+          const t = timeInput.value.trim();
+          let seconds = 0;
+          if (t) {
+              if (t.includes(':')) {
+                  const parts = t.split(':').map(n => parseInt(n, 10) || 0);
+                  seconds = (parts[0] * 60) + (parts[1] || 0);
+              } else {
+                  seconds = parseInt(t, 10) || 0;
+              }
+          }
+
+          // FIX: Logica anti-duplicati
+          const newId = ytId(v);
+          const newTime = seconds;
+          
+          const isDuplicate = (d.links || []).some(existingLink => {
+              const oldId = ytId(existingLink);
+              const oldTime = getTimeFromUrl(existingLink) || 0; // getTimeFromUrl restituisce secondi
+              
+              if (newId && oldId && newId === oldId) {
+                  // Stesso video ID. Controlla tempo.
+                  // Se entrambi 0 (no time), è duplicato
+                  if (newTime === 0 && oldTime === 0) return true;
+                  // Se tempi sono vicini (es. 59s vs 1:00), considerali uguali
+                  if (Math.abs(newTime - oldTime) <= 1) return true; 
+              }
+              // Se ID non combaciano, o non sono link YT validi, controlla URL grezzo
+              if (!newId && !oldId && v === existingLink) return true;
+              
+              return false;
+          });
+
+          if (isDuplicate) {
+              showToast('Questo link (o un duplicato) è già presente', 3000);
+              return;
+          }
+
+          // Se non è duplicato, aggiungi il link formattato
+          if (seconds > 0) {
+              try {
+                  const url = new URL(v.startsWith('http') ? v : `https://${v}`);
+                  url.searchParams.set('t', `${seconds}s`);
+                  v = url.toString();
+              } catch (e) {
+                  if (!v.includes('?')) v += `?t=${seconds}s`;
+                  else v += `&t=${seconds}s`;
+              }
+          }
+          
+          d.links.push(v);
+          urlInput.value = '';
+          timeInput.value = '';
+          save();
+          render();
+      });
+    }
+
+    deck.addEventListener('click',e=>{ if(d.__edit) return; if(e.target.closest('.deck-head')) return; const hasCards=(d.cards||[]).some(Boolean); if(!hasCards && window.matchMedia('(max-width:760px)').matches){ deck.classList.add('show-ctrl'); clearTimeout(deck._ctrlTimer); deck._ctrlTimer=setTimeout(()=>deck.classList.remove('show-ctrl'),2000); return;} if(e.target.closest('.slot')){ if(d.links?.length) showDropdown(deck,d.links); return;} if(d.links?.length) showDropdown(deck,d.links); });
+
+    grid.appendChild(deck);
+  }
+
+  function renderSeparator(d, idx) {
+      const grid = qs('#grid');
+      const sep = document.createElement('div');
+      sep.className = 'deck-separator';
+      // FIX: Mostra controlli se in edit mode
+      if (d.__edit) sep.classList.add('show-ctrl');
+      sep.dataset.index = idx;
+      sep.draggable = !d.__edit;
+      if (d.delmark) sep.classList.add('delmark');
+
+      sep.innerHTML = `
+          <hr>
+          <div class="separator-title" ${d.__edit?"contenteditable=\"true\"":""} spellcheck="false">${d.name}</div>
+          <hr>
+          <button class="icon-btn delete" title="Elimina">🗑</button>
+      `;
+
+      const titleEl = sep.querySelector('.separator-title');
+      if (d.__edit) {
+          setTimeout(() => { try { titleEl.focus(); const sel = window.getSelection(); const range = document.createRange(); range.selectNodeContents(titleEl); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); } catch {} }, 0);
+          
+          // FIX: Salva su blur
+          titleEl.addEventListener('blur', e => { 
+              const newName = titleEl.textContent.trim() || 'Separatore';
+              if (d.name !== newName) {
+                  d.name = newName;
+                  save();
+              }
+          });
+          
+          titleEl.addEventListener('keydown', e => { 
+              if (e.key === 'Enter') { 
+                  e.preventDefault(); 
+                  titleEl.blur(); // Trigger blur to save
+                  d.__edit = false; // Esci da modalità modifica
+                  save();
+                  render();
+              } 
+          });
+      } else {
+          titleEl.addEventListener('click', (e) => {
+              e.stopPropagation(); // MOD: Impedisci al click di propagarsi al separatore
+              d.__edit = true;
+              
+              // MOD: Mostra cestino quando si clicca per modificare
+              sep.classList.add('show-ctrl');
+              clearTimeout(sep._ctrlTimer);
+              sep._ctrlTimer = setTimeout(() => {
+                  if(!d.__edit) sep.classList.remove('show-ctrl'); // Nascondi solo se non è più in edit
+              }, 2000);
+              
+              save();
+              render();
+          });
+      }
+      
+      const delBtn = sep.querySelector('.delete');
+      // MOD: Logica click separatore per mostrare cestino
+      sep.addEventListener('click', (e) => {
+          if (d.__edit || e.target.closest('.delete')) return;
+          sep.classList.add('show-ctrl');
+          clearTimeout(sep._ctrlTimer);
+          sep._ctrlTimer = setTimeout(() => {
+              sep.classList.remove('show-ctrl');
+          }, 2000);
+      });
+      
+      delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (sep.classList.contains('delmark')) {
+              currentDecks().splice(idx, 1);
+              save();
+              render();
+          } else {
+              qsa('.deck.delmark, .deck-separator.delmark').forEach(el => {
+                  el.classList.remove('delmark');
+                  const btn = el.querySelector('.delete');
+                  if (btn) {
+                      btn.textContent = '🗑';
+                      btn.style.color = '';
+                  }
+              });
+              sep.classList.add('delmark');
+              delBtn.textContent = 'Conferma?';
+              delBtn.style.color = 'var(--danger)';
+
+              const clickAway = (evt) => {
+                  const clickedEl = evt.target.closest('.deck, .deck-separator');
+                  if (clickedEl === sep) return;
+                  
+                  sep.classList.remove('delmark');
+                  delBtn.textContent = '🗑';
+                  delBtn.style.color = '';
+                  document.removeEventListener('click', clickAway, { capture: true });
+                  document.removeEventListener('touchstart', clickAway, { capture: true });
+              };
+              
+              setTimeout(() => {
+                  document.addEventListener('click', clickAway, { capture: true, once: true });
+                  document.addEventListener('touchstart', clickAway, { capture: true, once: true });
+              }, 0);
+          }
+      });
+      
+      // Drag logic (Desktop)
+      sep.addEventListener('dragstart', e => { if(d.__edit){e.preventDefault();return;} sep.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; document.body.classList.add('deck-is-dragging');});
+      sep.addEventListener('dragend', () => { sep.classList.remove('dragging'); document.body.classList.remove('deck-is-dragging'); const order = qsa('.deck, .deck-separator').map(n => parseInt(n.dataset.index, 10)); const decks = currentDecks(); store.collections[store.active].decks = order.map(i => decks[i]); save(); render(); });
+      sep.addEventListener('dragover', e => { e.preventDefault(); const dragging = qs('.deck.dragging, .deck-separator.dragging'); if (!dragging || dragging === sep) return; const rect = sep.getBoundingClientRect(); const before = (e.clientY - rect.top) < rect.height / 2; sep.parentNode.insertBefore(dragging, before ? sep : sep.nextSibling); });
+
+      // MOD: Drag logic (Mobile)
+      let tX=0,tY=0,moved=false;
+      sep.addEventListener('touchstart',e=>{ 
+        tX=e.touches[0].clientX; 
+        tY=e.touches[0].clientY; 
+        moved=false; 
+        if(d.__edit || draggingElement) return; 
+        longPressTimer = setTimeout(() => {
+            e.preventDefault();
+            handleMobileDragStart(e, sep); // Usa 'sep' (questo elemento)
+        }, 350);
+      },{passive:false});
+
+      sep.addEventListener('touchmove',e=>{ 
+        const dx=Math.abs(e.touches[0].clientX-tX), dy=Math.abs(e.touches[0].clientY-tY); 
+        if(dx>4||dy>4) { 
+          moved=true; 
+          clearTimeout(longPressTimer);
+        }
+      },{passive:true});
+      
+      sep.addEventListener('touchend',e=>{ 
+        clearTimeout(longPressTimer); 
+        if(d.__edit || draggingElement) return; 
+        if(!moved){ 
+          // Il tap normale (gestito sopra) mostra i controlli
+        }
+      },{passive:true});
+
+      grid.appendChild(sep);
+  }
+
+  // MOD: Riscritto Drag & Drop Mobile
+  function handleMobileDragStart(e, el) { // MOD: 'el' generico
+      if (draggingElement) return;
+      draggingElement = el;
+      
+      // Inizia subito il trascinamento logico
+      draggingElement.classList.add('dragging');
+      document.body.classList.add('deck-is-dragging');
+      
+      // Aggiungi listener per muovere e finire
+      document.addEventListener('touchmove', handleMobileDragMove, { passive: false });
+      document.addEventListener('touchend', handleMobileDragEnd, { once: true });
+  }
+
+  function handleMobileDragMove(e) {
+      if (!draggingElement) return;
+      e.preventDefault();
+      
+      const touch = e.touches[0];
+      
+      // Trucco: nascondi l'elemento che trascini per "vedere" cosa c'è sotto
+      draggingElement.style.display = 'none';
+      const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+      draggingElement.style.display = ''; // Rimettilo subito
+      
+      const targetDeck = targetElement ? targetElement.closest('.deck, .deck-separator') : null;
+
+      if (targetDeck && targetDeck !== draggingElement) {
+          const rect = targetDeck.getBoundingClientRect();
+          // Calcola il punto medio verticale dell'elemento target
+          const midY = rect.top + rect.height / 2;
+          
+          if (touch.clientY < midY) {
+              // Sposta *prima* del target
+              targetDeck.parentNode.insertBefore(draggingElement, targetDeck);
+          } else {
+              // Sposta *dopo* il target
+              targetDeck.parentNode.insertBefore(draggingElement, targetDeck.nextSibling);
+          }
+      }
+  }
+
+  function handleMobileDragEnd(e) {
+      document.removeEventListener('touchmove', handleMobileDragMove);
+      if (!draggingElement) return;
+
+      const decks = currentDecks();
+      const order = qsa('.deck, .deck-separator').map(n => parseInt(n.dataset.index, 10));
+      store.collections[store.active].decks = order.map(i => decks[i]);
+      save();
+
+      draggingElement.classList.remove('dragging');
+      document.body.classList.remove('deck-is-dragging');
+      draggingElement = null;
+      
+      render(); // Ridisegna tutto per pulizia
+  }
+
+  function handleCancelClick(e) {
+      // Questa funzione non è più necessaria con la nuova logica
+  }
+
+
+  function showDropdown(deckEl,links){
+    hideDropdowns();
+    const dd=deckEl.querySelector('.yt-dd'); dd.innerHTML='';
+    const groups={}; links.forEach(l=>{ const id=ytId(l); if(!id) return; const t=getTimeFromUrl(l); (groups[id]??={id,items:[]}).items.push({url:l,t}); });
+    const entries=Object.values(groups);
+    if(entries.length===1 && entries[0].items.length===1){ window.open(entries[0].items[0].url,'_blank'); return; }
+    entries.forEach(g=>{ const wrap=document.createElement('div'); wrap.className='yt-wrap'; const img=new Image(); img.src=`https://img.youtube.com/vi/${g.id}/mqdefault.jpg`; img.className='yt-thumb'; img.addEventListener('click',e=>{e.stopPropagation(); window.open(g.items[0].url,'_blank'); hideDropdowns();}); wrap.appendChild(img); const times=g.items.map(it=>it.t).filter(t=>t!==null); if(times.length>1){ const tb=document.createElement('div'); tb.className='time-badges'; g.items.forEach(it=>{ if(it.t===null) return; const b=document.createElement('button'); b.textContent=fmtTime(it.t); b.addEventListener('click',e=>{e.stopPropagation(); window.open(it.url,'_blank'); hideDropdowns();}); tb.appendChild(b); }); wrap.appendChild(tb);} dd.appendChild(wrap); });
+    const isMobile=window.matchMedia('(max-width:760px)').matches; dd.classList.add('show'); dd.classList.toggle('mobile',isMobile); if(isMobile){ dd.style.left='50%'; dd.style.top='50%'; dd.style.transform='translate(-50%,-50%)'; } else { const rect=deckEl.getBoundingClientRect(); const desiredLeft=rect.left+16; const desiredTop=rect.top+56; const vw=window.innerWidth; const vh=window.innerHeight; const w=dd.offsetWidth; const h=dd.offsetHeight; const left=Math.max(8,Math.min(desiredLeft,vw-w-8)); const top=Math.max(8,Math.min(desiredTop,vh-h-8)); dd.style.left=left+'px'; dd.style.top=(top+window.scrollY)+'px'; dd.style.transform=''; }
+    setTimeout(()=>document.addEventListener('click',hideDropdowns,{once:true}),0);
+  }
+  function hideDropdowns(){ qsa('.yt-dd.show').forEach(n=>n.classList.remove('show')); }
+
+  const modal=qs('#cardModal'); const cardGrid=qs('#cardGrid'); const cardSearch=qs('#cardSearch');
+  
+  let sortConfig = { key: 'name', dir: 'asc' };
+  
+  qsa('.filterbar .icon-btn[data-sort]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.sort;
+      if (sortConfig.key === key) {
+        sortConfig.dir = sortConfig.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortConfig.key = key;
+        sortConfig.dir = 'asc';
+      }
+      updateSortButtons();
+      fillPicker(cardSearch.value || '');
+    });
+  });
+
+  function updateSortButtons() {
+    qsa('.filterbar .icon-btn[data-sort]').forEach(btn => {
+      const arrow = btn.querySelector('.sort-arrow');
+      if (btn.dataset.sort === sortConfig.key) {
+        arrow.textContent = sortConfig.dir === 'asc' ? ' ↑' : ' ↓';
+      } else {
+        arrow.textContent = '';
+      }
+    });
+  }
+
+  const typeFilterBtn = qs('.filterbar .fb-type');
+  const typeCycle = ['all', 'Troop', 'Building', 'Spell'];
+  typeFilterBtn.addEventListener('click', () => {
+    let currentIdx = typeCycle.indexOf(typeFilter);
+    currentIdx = (currentIdx + 1) % typeCycle.length;
+    typeFilter = typeCycle[currentIdx];
+    
+    if (typeFilter === 'all') {
+      typeFilterBtn.textContent = 'Tipo';
+      typeFilterBtn.classList.remove('active');
+    } else {
+      typeFilterBtn.textContent = typeTranslations[typeFilter] || 'Tipo';
+      typeFilterBtn.classList.add('active');
+    }
+    fillPicker(cardSearch.value || '');
+  });
+
+  qsa('.filterbar .icon-btn[data-filter]:not([data-filter="type"])').forEach(btn=>{ 
+    btn.addEventListener('click',()=>{ 
+      qsa('.filterbar .icon-btn[data-filter]:not([data-filter="type"])').forEach(b=>b.classList.remove('active')); 
+      btn.classList.add('active'); 
+      
+      const filterType = btn.dataset.filter;
+      if(filterType === 'all') {
+        filterMode='all';
+        sortConfig = { key: 'name', dir: 'asc' };
+        updateSortButtons();
+      }
+      if(filterType === 'evo') {
+        // MOD: Logica toast "Solo Evo"
+        const d = currentDecks()[pickerCtx.deck];
+        const capReached=(d.cards.filter(Boolean).filter(isEvo).length - (d.cards[pickerCtx.slot]&&isEvo(d.cards[pickerCtx.slot])?1:0))>=2;
+        if (capReached) {
+             showToast('Hai già 2 carte Evo nel deck', 3000);
+        }
+        filterMode='evo'; 
+      }
+      if(filterType === 'non') filterMode='nonevo'; 
+      
+      typeFilter = 'all';
+      typeFilterBtn.textContent = 'Tipo';
+      typeFilterBtn.classList.remove('active');
+
+      fillPicker(cardSearch.value||''); 
+    }); 
+  });
+
+  function openPicker(deckIdx,slotIdx){ 
+    pickerCtx.deck=deckIdx; 
+    pickerCtx.slot=slotIdx; 
+    cardSearch.value = '';
+    
+    sortConfig = { key: 'name', dir: 'asc' };
+    updateSortButtons();
+    
+    filterMode = 'all';
+    typeFilter = 'all';
+    qsa('.filterbar .icon-btn[data-filter]').forEach(b => b.classList.remove('active'));
+    qs('.filterbar .fb-all').classList.add('active');
+    typeFilterBtn.textContent = 'Tipo';
+    
+    // MOD: Ottieni titolo corrente dal DOM
+    const deckEl = qs(`.deck[data-index="${deckIdx}"]`);
+    const currentTitle = deckEl ? qs('.deck-title', deckEl).textContent : '';
+
+    fillPicker('', currentTitle); // Passa il titolo
+    modal.classList.add('show'); 
+  }
+  function closePicker(){ modal.classList.remove('show'); }
+  
+  function fillPicker(filter, title = ''){ // MOD: Accetta titolo
+    cardGrid.innerHTML='';
+    const d=currentDecks()[pickerCtx.deck];
+
+    const used = new Set();
+    d.cards.filter(Boolean).forEach(name => {
+      used.add(name);
+      const card = getCardByName(name);
+      if (card) {
+        if (card.baseCard) used.add(card.baseCard);
+        if (card.evoCard) used.add(card.evoCard);
+      }
+    });
+    const currentCardInSlot = d.cards[pickerCtx.slot];
+    if (currentCardInSlot) {
+        used.delete(currentCardInSlot);
+        const card = getCardByName(currentCardInSlot);
+        if (card) {
+            if (card.baseCard) used.delete(card.baseCard);
+            if (card.evoCard) used.delete(card.evoCard);
+        }
+    }
+
+    const championInDeck = d.cards.filter((c, i) => i !== pickerCtx.slot && c && getCardByName(c)?.rarity === 'Champion').length;
+    const capReached=(d.cards.filter(Boolean).filter(isEvo).length - (d.cards[pickerCtx.slot]&&isEvo(d.cards[pickerCtx.slot])?1:0))>=2;
+    const evoAllowed=pickerCtx.slot<4;
+
+    // MOD: Logica archetipi
+    const normTitle = normalizeString(title);
+    let titleWords = (title || '').toLowerCase().split(/[\s.-]+/).filter(w => w.length > 1);
+    if (deckArchetypes[normTitle]) {
+        titleWords = [...titleWords, ...deckArchetypes[normTitle]];
+    }
+
+    cardDatabase.map(c => c.name)
+      .filter(n => fuzzyMatch(n, filter))
+      .filter(n => !used.has(n))
+      .filter(n=>filterMode==='all'?true:filterMode==='evo'?isEvo(n):!isEvo(n))
+      .filter(n => { const card = getCardByName(n); return typeFilter === 'all' ? true : card.type === typeFilter; })
+      .filter(n=>!(capReached&&isEvo(n)))
+      .filter(n=>evoAllowed?true:!isEvo(n))
+      .filter(n => { const card = getCardByName(n); return !(card.rarity === 'Champion' && championInDeck >= 1); })
+      // MOD: Logica sort aggiornata
+      .sort((a, b) => {
+          const aCard = getCardByName(a);
+          const bCard = getCardByName(b);
+
+          // Get base names for grouping
+          const baseNameA = aCard.baseCard || aCard.name;
+          const baseNameB = bCard.baseCard || bCard.name;
+
+          if (baseNameA !== baseNameB) {
+              // Different base cards, sort by selected filter
+              let valA, valB;
+              if (sortConfig.key === 'rarity') {
+                valA = rarityOrder[aCard.rarity] || 0;
+                valB = rarityOrder[bCard.rarity] || 0;
+              } else if (sortConfig.key === 'elixir') {
+                valA = aCard.elixir || 0;
+                valB = bCard.elixir || 0;
+                if (aCard.name === 'Mirror') valA = 10;
+                if (bCard.name === 'Mirror') valB = 10;
+              } else { // 'name'
+                // MOD: Usa titleWords (già calcolato)
+                const aMatch = titleWords.some(w => fuzzyMatch(a, w));
+                const bMatch = titleWords.some(w => fuzzyMatch(b, w));
+                if (aMatch && !bMatch) return -1;
+                if (!aMatch && bMatch) return 1;
+                
+                valA = baseNameA;
+                valB = baseNameB;
+                return sortConfig.dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+              }
+              
+              if (valA === valB) { // Se l'elisir/rarità è uguale, ordina per nome
+                  return baseNameA.localeCompare(baseNameB);
+              }
+              return sortConfig.dir === 'asc' ? valA - valB : valB - valA;
+
+          } else {
+              // Same base card (e.g., Knight vs Knight Evo), sort by evo status
+              return aCard.evo ? 1 : -1; // Base card first
+          }
+      })
+      .forEach(name=>{ 
+          const card = getCardByName(name);
+          const opt=document.createElement('div'); 
+          opt.className='card-opt'; 
+          if (card.evo === 1) opt.classList.add('evo-card');
+          if (card.evo === 1 && card.rarity === 'Legendary') opt.classList.add('legendary-evo-card');
+          
+          const img=new Image(); img.src=imageOf(name); img.alt=name; 
+          opt.appendChild(img); 
+          opt.title=`${name} (${card.elixir} Elixir, ${card.rarity}, ${typeTranslations[card.type] || card.type})`;
+          opt.addEventListener('click',()=>{ 
+            if (card.rarity === 'Champion') {
+                const d2 = currentDecks()[pickerCtx.deck];
+                const countWithoutSlot = d2.cards.filter((_, i) => i !== pickerCtx.slot).filter(Boolean).filter(n => getCardByName(n)?.rarity === 'Champion').length;
+                if (countWithoutSlot >= 1) {
+                    showToast('Puoi avere al massimo 1 Campione per deck', 3000);
+                    return;
+                }
+            }
+            if(isEvo(name)&&!evoAllowed){ showToast('Le carte Evo possono stare solo nella prima riga',3000); return; } 
+            if(isEvo(name)){ const d2=currentDecks()[pickerCtx.deck]; const countWithoutSlot=d2.cards.filter((_,i)=>i!==pickerCtx.slot).filter(Boolean).filter(isEvo).length; if(countWithoutSlot>=2){ showToast('Puoi avere al massimo 2 carte Evo',3000); return; } } 
+            
+            const d3=currentDecks()[pickerCtx.deck]; const before=d3.cards.filter(Boolean).length; 
+            d3.cards[pickerCtx.slot]=name; 
+            d3.cards=d3.cards.slice(0,8); 
+            const after=d3.cards.filter(Boolean).length; 
+            save(); render(); closePicker(); 
+            if(before===0&&after>0){ showFabTip('Suggerimento: le carte Evo possono stare solo nella prima riga',6000); } 
+          }); 
+          cardGrid.appendChild(opt); 
+      });
+  }
+
+  // qs('#addDeck').addEventListener('click',()=>{ const decks=currentDecks(); decks.push({name:'Nuovo deck',cards:[],links:[],__edit:true}); save(); render();}); // MOD: Spostato
+  qs('#modalClose').addEventListener('click',closePicker);
+  modal.addEventListener('click',e=>{ if(e.target===modal) closePicker(); });
+  cardSearch.addEventListener('input',e=> {
+    // MOD: Rileggi il titolo per i suggerimenti live
+    const deckEl = qs(`.deck[data-index="${pickerCtx.deck}"]`);
+    const currentTitle = deckEl ? qs('.deck-title', deckEl).textContent : '';
+    fillPicker(e.target.value, currentTitle);
+  });
+  
+  // MOD: Click destro per separatore
+  qs('#grid').addEventListener('contextmenu', e => {
+      if (e.target.closest('.deck, .deck-separator')) return;
+      e.preventDefault();
+      addSeparator();
+  });
+  
+  // MOD: Aggiungi contextmenu anche al FAB
+  fab.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      addSeparator();
+  });
+  
+  // FIX: Click-away per salvare TUTTI i deck in modifica
+  document.addEventListener('click', e => {
+      // FIX: Aggiunto .deck.show-ctrl per fixare bug matita
+      if (e.target.closest('.deck.edit, .deck.show-ctrl, .deck-separator.show-ctrl, .deck-separator[contenteditable="true"], .drawer-panel, .modal-panel, .fab, .yt-dd')) {
+          return;
+      }
+      
+      let needsRender = false;
+      const decks = currentDecks();
+      decks.forEach((d, idx) => {
+          if (d.__edit) {
+              // Salva il nome dal DOM prima di chiudere
+              const el = qs(`.deck[data-index="${idx}"], .deck-separator[data-index="${idx}"]`);
+              if (el) {
+                  const titleEl = el.querySelector('.deck-title, .separator-title');
+                  if (titleEl) {
+                       const newName = titleEl.textContent.trim();
+                       if (d.type === 'separator') {
+                          d.name = newName || 'Separatore';
+                       } else {
+                          d.name = (newName === 'Nuovo deck') ? '' : newName;
+                       }
+                  }
+              }
+              d.__edit = false;
+              needsRender = true;
+          }
+      });
+      
+      if (needsRender) {
+          save();
+          render();
+      }
+  });
+
+
+  migrateIfNeeded(); 
+  applyVisualSettings(); // MOD: Applica classi Acrilico/Glass al caricamento
+  renderCollections(); 
+  render(); 
+  renderHelp();
+
+  function showToast(msg,ms=2200){ let t=document.querySelector('.toast'); if(!t){ t=document.createElement('div'); t.className='toast'; document.body.appendChild(t);} t.textContent=msg; t.classList.add('show'); clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'),ms); }
+  function showFabTip(msg,ms=5000){ let t=document.querySelector('.fab-tip'); if(!t){ t=document.createElement('div'); t.className='fab-tip'; document.body.appendChild(t);} t.textContent=msg; t.classList.add('show'); clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'),ms); }
+
+  function renderHelp(){ const box=document.getElementById('helpBox'); if(!box) return; const isMobile=/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent); if(isMobile){ box.innerHTML=`• Scopo: costruisci una bacheca di <b>deck</b> con pulsanti <b>video</b>.<br>• Tocca il <b>titolo</b> del deck per mostrare <b>✎</b> e <b>🗑</b>.<br>• Tieni premuto un deck (senza muoverti) per <b>spostarlo</b> (disattivo in modifica).<br>• In modifica: tocca uno <b>slot</b> per aprire il <b>catalogo</b> (ora filtrabile per <b>Tipo</b> e ordinabile per <b>Rarità</b>/<b>Elisir</b>).<br>• Tocca un <b>video</b>: se lo stesso video ha <b>più minuti</b>, vedi un’unica anteprima con bottoni del minutaggio.<br>• Usa le <b>collezioni</b> per separare Ladder/Tornei ecc.; puoi <b>✎ rinominare</b> o <b>🗑 eliminare</b> una collezione.`; } else { box.innerHTML=`• Scopo: crea e organza <b>deck</b> con accesso rapidi ai <b>video</b> tutorial.<br>• Su desktop i pulsanti <b>✎</b> e <b>🗑</b> sono sempre visibili (niente click sul titolo).<br>• Trascina con il mouse per <b>riordinare</b> i deck; in modifica clicca gli <b>slot</b> per aprire il <b>catalogo</b> (ora filtrabile per <b>Tipo</b> e ordinabile per <b>Rarità</b>/<b>Elisir</b>).<br>• Clic su un <b>video</b>: apre il link; se ci sono più <b>timestamp</b> dello stesso video, un’unica anteprima con pulsanti del minutaggio.<br>• Gestisci le <b>collezioni</b> dal menu: <b>attiva</b>, <b>✎ rinomina</b>, <b>🗑 eliminare</b>.`; } }
+
+  // self-tests
+  (function(){ try{ console.assert(store && store.collections && store.active,'store ok'); const decks=currentDecks(); decks.forEach(d=>{ console.assert((d.cards||[]).length<=8,'8 slots'); const evoCt=(d.cards||[]).filter(Boolean).filter(isEvo).length; console.assert(evoCt<=2,'<=2 evo'); }); console.log('[OK] self-tests'); }catch(e){ console.warn('self-tests issue',e);} })();
+  </script>
+</body>
+</html>
